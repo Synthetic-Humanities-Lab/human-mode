@@ -1,0 +1,17 @@
+{
+  "name": "human-mode-extension",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Experimental Chrome extension for teaching how research agents work behind the scenes.",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc --noEmit && vitest run && node scripts/build.mjs"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.308",
+    "esbuild": "^0.25.0",
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.8"
+  }
+}

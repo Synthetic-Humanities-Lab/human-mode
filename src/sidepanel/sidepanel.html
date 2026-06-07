@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Human Mode</title>
+  <link rel="stylesheet" href="sidepanel.css" />
+</head>
+<body>
+  <div id="appRoot" class="app">
+    <header class="header panel">
+      <div>
+        <h1>Human Mode</h1>
+        <p class="subtitle">Work through an automatically assigned research task like a constrained agent.</p>
+      </div>
+      <div class="header-actions">
+        <button id="openOnboardingBtn" class="secondary ghost-button" type="button">How It Works</button>
+        <div id="modeBadge" class="badge">OFF</div>
+      </div>
+    </header>
+
+    <section id="onboardingSection" class="onboarding-overlay hidden">
+      <div class="onboarding-card">
+        <div class="section-header">
+          <div id="onboardingEyebrow" class="eyebrow">Orientation Material</div>
+          <h2 id="onboardingTitle">How Human Mode works</h2>
+          <span id="onboardingStepMeta" class="hint">Page 1 of 2</span>
+        </div>
+        <div id="onboardingInduction" class="onboarding-induction">
+          <div class="onboarding-memo-meta" aria-hidden="true">
+            <span>Form HM-01</span>
+            <span>AI Access: Denied</span>
+          </div>
+          <p id="onboardingBody" class="onboarding-body"></p>
+          <p id="onboardingSupport" class="onboarding-support"></p>
+          <div class="onboarding-stamps" aria-hidden="true">
+            <span>Approved For Human Completion</span>
+            <span>Supervision Implied</span>
+          </div>
+        </div>
+        <div id="onboardingDossier" class="onboarding-dossier hidden"></div>
+        <div class="button-row">
+          <button id="onboardingPrevBtn" class="secondary" type="button">Back</button>
+          <button id="onboardingNextBtn" type="button">Next</button>
+          <button id="dismissOnboardingBtn" class="secondary" type="button">Skip</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel controls">
+      <div class="button-row">
+        <button id="startSessionBtn">Start Session</button>
+        <button id="pauseResumeSessionBtn" class="secondary" type="button" disabled>Pause</button>
+        <button id="abortSessionBtn" class="danger">Abort</button>
+      </div>
+      <div class="button-row">
+        <button id="expandContextBtn" class="secondary">Expand Context</button>
+        <button id="endSessionBtn" class="secondary">End Session</button>
+      </div>
+    </section>
+
+    <section class="panel stats-grid">
+      <div class="stat-card">
+        <div class="label">State</div>
+        <div id="stateValue" class="value">OFF</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Phase</div>
+        <div id="phaseValue" class="value">START</div>
+      </div>
+      <div class="stat-card full">
+        <div class="label">Budget</div>
+        <div class="value"><span id="budgetSpent">$0.00</span> / <span id="budgetTotal">$10.00</span></div>
+        <div class="bar"><div id="budgetFill" class="fill"></div></div>
+        <div id="budgetMeta" class="meta">Ops $0.00 | Context $0.00 | Remaining $10.00 | Rate $0.01 / token</div>
+      </div>
+      <div class="stat-card full">
+        <div class="label">Operations</div>
+        <div class="value"><span id="operationsUsed">0</span> / <span id="operationsMax">0</span></div>
+        <div class="bar"><div id="operationsFill" class="fill"></div></div>
+        <div id="operationsMeta" class="meta">Operations available under current budget.</div>
+      </div>
+      <div class="stat-card full">
+        <div class="label">Context Window</div>
+        <div class="value"><span id="contextUsed">0</span> / <span id="contextMax">750</span></div>
+        <div class="bar"><div id="contextFill" class="fill"></div></div>
+        <div id="contextMeta" class="meta">Task 0 | Notes 0 | Draft 0</div>
+      </div>
+    </section>
+
+    <section class="panel section">
+      <div class="section-header">
+        <h2>Assigned Task</h2>
+        <span class="hint">Randomly assigned when the session starts.</span>
+      </div>
+      <div class="goal-block">
+        <div class="field-label">Task</div>
+        <div id="taskDisplay" class="goal-value muted">No task assigned yet.</div>
+      </div>
+      <div class="goal-block">
+        <div class="field-label">Budget</div>
+        <div id="budgetDisplay" class="goal-value">Fixed at $10.00 per session.</div>
+      </div>
+    </section>
+
+    <section class="panel section">
+      <div class="section-header">
+        <h2>Candidate Sources</h2>
+        <span class="hint">Candidate sources stay here while ranking happens on the page.</span>
+      </div>
+      <div id="rankCandidatesList" class="rank-candidates-list"></div>
+      <div class="button-row">
+        <button id="addRankCandidateBtn" class="secondary">Add Candidate</button>
+        <button id="finalizeRankCandidatesBtn">Done Adding Sources</button>
+      </div>
+    </section>
+
+    <section id="rankedPagesSection" class="panel section hidden">
+      <div class="section-header">
+        <h2>Ranked Pages</h2>
+        <span class="hint">This is the order note taking will follow.</span>
+      </div>
+      <div id="rankedPagesList" class="rank-candidates-list"></div>
+    </section>
+
+    <section class="panel section">
+      <div class="section-header">
+        <h2>Internal Notes</h2>
+        <span class="hint">Committed notes lock until you explicitly revise them.</span>
+      </div>
+      <div id="notesList" class="notes-list"></div>
+      <div class="button-row">
+        <button id="newNoteBtn" class="secondary">Add Note Block</button>
+        <button id="nextRankedPageBtn" class="secondary">Next Ranked Page</button>
+        <button id="enterDeliverableBtn">Enter Deliverable</button>
+      </div>
+    </section>
+
+    <section class="panel section" id="deliverableSection">
+      <div class="section-header">
+        <h2>Deliverable</h2>
+        <span class="hint">Draft here; retained notes show on the page in deliverable phase.</span>
+      </div>
+      <div class="deliverable-workspace">
+        <div class="field-label">Draft</div>
+        <textarea id="draftInput" rows="12" placeholder="Draft output here..."></textarea>
+        <p class="hint deliverable-notes-hint">Retained notes appear full-screen on the page while you draft here.</p>
+      </div>
+      <div class="button-row">
+        <button id="commitDraftBtn" class="secondary">Commit Draft</button>
+      </div>
+    </section>
+
+    <section class="panel section">
+      <div class="section-header">
+        <h2>Premium Tools</h2>
+        <span class="hint">Not available on the current plan.</span>
+      </div>
+      <div class="premium-list">
+        <div class="premium-item"><span>Auto-extract notes</span><span class="premium-tag">Pro</span></div>
+        <div class="premium-item"><span>Summarize page automatically</span><span class="premium-tag">Pro</span></div>
+        <div class="premium-item"><span>Compare sources</span><span class="premium-tag">Pro</span></div>
+        <div class="premium-item"><span>Search within notes</span><span class="premium-tag">Enterprise</span></div>
+      </div>
+    </section>
+
+    <section class="panel section">
+      <div class="section-header">
+        <h2>Runtime Trace</h2>
+      </div>
+      <div id="traceList" class="trace-list"></div>
+    </section>
+
+    <section class="panel section sticky-note-capture hidden">
+      <div class="section-header">
+        <h2>Begin Note Taking</h2>
+        <span class="hint">After ranking, lock the browser into that source order.</span>
+      </div>
+      <div id="noteCaptureQueueMeta" class="callout muted">Add pages to the candidate set, then rank them before note capture.</div>
+      <button id="beginNoteCaptureBtn" class="secondary">Begin Note Taking</button>
+    </section>
+
+    <section id="exportSection" class="panel section hidden">
+      <div class="section-header">
+        <h2>Session Export</h2>
+        <span class="hint">Choose what to download.</span>
+      </div>
+      <div id="exportSummary" class="callout"></div>
+      <div class="button-row">
+        <button id="downloadDeliverableBtn">Download Deliverable (.doc)</button>
+        <button id="downloadJsonBtn" class="secondary">Download Runtime JSON</button>
+      </div>
+    </section>
+  </div>
+
+  <template id="noteTemplate">
+    <article class="note-card">
+      <div class="note-head">
+        <div>
+          <div class="note-title">Note Block</div>
+          <div class="note-meta"></div>
+        </div>
+      </div>
+      <div class="note-readonly"></div>
+      <textarea class="note-text" rows="4" placeholder="Write note block..."></textarea>
+      <div class="button-row compact readonly-actions">
+        <button class="revise-note-btn secondary">Revise Note</button>
+        <button class="delete-note-btn secondary">Delete</button>
+      </div>
+      <div class="button-row compact editing-actions">
+        <button class="commit-note-btn">Commit Note</button>
+        <button class="cancel-note-btn secondary">Cancel</button>
+      </div>
+    </article>
+  </template>
+
+  <div id="sideToast" class="side-toast" role="status" aria-live="polite"></div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>
