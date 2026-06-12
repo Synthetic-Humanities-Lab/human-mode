@@ -502,6 +502,9 @@ button:focus {
 .onboarding-support,
 .onboarding-memo-meta,
 .onboarding-stamps,
+.onboarding-faq-meta,
+.onboarding-faq-question,
+.onboarding-faq-answer,
 .onboarding-slip-title,
 .onboarding-slip-text,
 .onboarding-slip-stamp,
@@ -587,6 +590,38 @@ button:focus {
 .onboarding-dossier {
   display: grid;
   gap: 10px;
+}
+
+.onboarding-faq-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(248, 251, 248, 0.82), rgba(229, 238, 233, 0.62));
+}
+
+.onboarding-faq-meta {
+  color: var(--accent-strong);
+  font-size: 17px;
+  line-height: 1.15;
+  text-transform: uppercase;
+}
+
+.onboarding-faq-question {
+  color: var(--text-strong);
+  font-size: 27px;
+  line-height: 1.04;
+  text-transform: none;
+}
+
+.onboarding-faq-answer {
+  padding-top: 11px;
+  border-top: 1px solid var(--line-soft);
+  color: var(--muted);
+  font-size: 19px;
+  line-height: 1.3;
+  text-transform: none;
 }
 
 .onboarding-dossier-route {
@@ -692,7 +727,6 @@ button:focus {
 }
 
 .trace-list,
-.premium-list,
 .rank-candidates-list {
   display: grid;
   gap: 10px;
@@ -700,7 +734,6 @@ button:focus {
 
 .note-card,
 .trace-item,
-.premium-item,
 .rank-candidate {
   position: relative;
   border: 1px solid var(--line);
@@ -820,23 +853,6 @@ button:focus {
 
 .note-card.editing {
   border-color: var(--accent);
-}
-
-.premium-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  line-height: 1.4;
-}
-
-.premium-tag {
-  border: 1px solid var(--line);
-  border-radius: 2px;
-  padding: 4px 7px 3px;
-  background: #f8fbf9;
-  color: var(--accent-strong);
 }
 
 .trace-item {

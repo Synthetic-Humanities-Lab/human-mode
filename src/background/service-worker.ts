@@ -81,7 +81,7 @@ async function focusTrackedTab(tabId: number, windowId: number, tabIndex: number
   }
 }
 
-const TOAST_TAB_LOCK_MSG = "You can't switch tabs, open a new tab, or use the address bar during an active session.";
+const TOAST_TAB_LOCK_MSG = 'External navigation unavailable during active work. Add new pages through source intake.';
 let lastTabLockToastAt = 0;
 const TAB_LOCK_TOAST_DEBOUNCE_MS = 2000;
 
@@ -413,16 +413,18 @@ async function startSession(sender: chrome.runtime.MessageSender): Promise<Runti
   const session = createEmptySession();
   session.sessionState = SessionState.ACTIVE;
   session.phase = Phase.RETRIEVAL;
-  session.task = assignedTask.task;
+  session.requesterQuestion = assignedTask.requesterQuestion;
+  session.workOrder = assignedTask.workOrder;
+  session.task = assignedTask.workOrder;
   session.taskBankTaskId = assignedTask.id;
   session.taskSearchQuery = assignedTask.searchQuery;
   session.currentSearchQuery = assignedTask.searchQuery;
   session.activeTabId = activeTab.id;
   session.activeUrl = searchUrl;
-  session.activeTitle = `Google results for ${assignedTask.task}`;
+  session.activeTitle = `Google results for ${assignedTask.workOrder}`;
   session.navigationChain = [searchUrl];
   session.lastTrackedNavigationUrl = activeTab.url || '';
-  const spent = spendOperation(session, TraceKind.SESSION_START, `Session started with assigned task: ${assignedTask.task}`);
+  const spent = spendOperation(session, TraceKind.SESSION_START, `Session started with work order: ${assignedTask.workOrder}`);
   if (!spent.ok) return spent;
   await persistSession(session);
   await queueTabNavigation(activeTab.id, searchUrl);

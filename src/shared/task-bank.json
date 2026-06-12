@@ -1,502 +1,218 @@
 [
   {
     "id": "task_001",
-    "task": "Learn how to research competitor pricing for a SaaS product.",
-    "searchQuery": "how to research competitor pricing for a SaaS product"
+    "requesterQuestion": "How do you write SaaS release notes efficiently?",
+    "workOrder": "Draft a short source-backed brief on writing SaaS release notes efficiently.",
+    "searchQuery": "how to write SaaS release notes efficiently"
   },
   {
     "id": "task_002",
-    "task": "Learn how to compare CRM software for a small business.",
-    "searchQuery": "how to compare CRM software for a small business"
-  },
-  {
-    "id": "task_003",
-    "task": "Learn how to benchmark ecommerce return policies.",
-    "searchQuery": "how to benchmark ecommerce return policies"
-  },
-  {
-    "id": "task_004",
-    "task": "Learn how to gather customer sentiment from app reviews.",
-    "searchQuery": "how to gather customer sentiment from app reviews"
-  },
-  {
-    "id": "task_005",
-    "task": "Learn how to define an ideal customer profile for a B2B analytics tool.",
-    "searchQuery": "how to define an ideal customer profile for a B2B analytics tool"
-  },
-  {
-    "id": "task_006",
-    "task": "Learn how to estimate market size for a plant-based snack brand.",
-    "searchQuery": "how to estimate market size for a plant-based snack brand"
-  },
-  {
-    "id": "task_007",
-    "task": "Learn how to evaluate donor management software for a nonprofit.",
-    "searchQuery": "how to evaluate donor management software for a nonprofit"
-  },
-  {
-    "id": "task_008",
-    "task": "Learn how to compare warehouse inventory scanning tools.",
-    "searchQuery": "how to compare warehouse inventory scanning tools"
-  },
-  {
-    "id": "task_009",
-    "task": "Learn how to research churn reduction tactics for subscriptions.",
-    "searchQuery": "how to research churn reduction tactics for subscription businesses"
-  },
-  {
-    "id": "task_010",
-    "task": "Learn how to compare password manager features.",
-    "searchQuery": "how to compare password manager features"
-  },
-  {
-    "id": "task_011",
-    "task": "Learn how to structure help center articles for refund requests.",
-    "searchQuery": "how to structure help center articles for refund requests"
-  },
-  {
-    "id": "task_012",
-    "task": "Learn how to write SLAs for an IT help desk.",
-    "searchQuery": "how to write SLAs for an IT help desk"
-  },
-  {
-    "id": "task_013",
-    "task": "Learn how to design a customer support ticket triage workflow.",
+    "requesterQuestion": "How do support teams design ticket triage workflows?",
+    "workOrder": "Draft a short source-backed brief on structuring customer support ticket triage workflows.",
     "searchQuery": "how to design a customer support ticket triage workflow"
   },
   {
-    "id": "task_014",
-    "task": "Learn how to handle chatbot handoffs to human support.",
-    "searchQuery": "how to handle chatbot handoffs to human support"
+    "id": "task_003",
+    "requesterQuestion": "How do nonprofits evaluate donor management software?",
+    "workOrder": "Draft a short source-backed brief on evaluating donor management software for a nonprofit.",
+    "searchQuery": "how to evaluate donor management software for a nonprofit"
   },
   {
-    "id": "task_015",
-    "task": "Learn how to create an escalation policy for angry customers.",
-    "searchQuery": "how to create an escalation policy for angry customers"
+    "id": "task_004",
+    "requesterQuestion": "How do small businesses compare CRM software?",
+    "workOrder": "Draft a short source-backed brief on comparing CRM software for a small business.",
+    "searchQuery": "how to compare CRM software for a small business"
   },
   {
-    "id": "task_016",
-    "task": "Learn how to build an onboarding checklist for new SaaS users.",
-    "searchQuery": "how to build an onboarding checklist for new SaaS users"
-  },
-  {
-    "id": "task_017",
-    "task": "Learn how to choose FAQ topics for an online tutoring platform.",
-    "searchQuery": "how to choose FAQ topics for an online tutoring platform"
-  },
-  {
-    "id": "task_018",
-    "task": "Learn how to design a bug report intake form.",
-    "searchQuery": "how to design a bug report intake form"
-  },
-  {
-    "id": "task_019",
-    "task": "Learn how to create a complaint tagging taxonomy for support teams.",
-    "searchQuery": "how to create a complaint tagging taxonomy for support teams"
-  },
-  {
-    "id": "task_020",
-    "task": "Learn how to run customer feedback interviews.",
-    "searchQuery": "how to run customer feedback interviews"
-  },
-  {
-    "id": "task_021",
-    "task": "Learn how to onboard a new vendor.",
-    "searchQuery": "how to onboard a new vendor"
-  },
-  {
-    "id": "task_022",
-    "task": "Learn how to plan an office relocation project.",
-    "searchQuery": "how to plan an office relocation project"
-  },
-  {
-    "id": "task_023",
-    "task": "Learn how to build a laptop procurement workflow.",
-    "searchQuery": "how to build a laptop procurement workflow"
-  },
-  {
-    "id": "task_024",
-    "task": "Learn how to compare shipping carriers for a small ecommerce business.",
-    "searchQuery": "how to compare shipping carriers for a small ecommerce business"
-  },
-  {
-    "id": "task_025",
-    "task": "Learn how to research cold storage logistics for meal kits.",
-    "searchQuery": "how to research cold storage logistics for meal kits"
-  },
-  {
-    "id": "task_026",
-    "task": "Learn how to write an RFP for software vendors.",
-    "searchQuery": "how to write an RFP for software vendors"
-  },
-  {
-    "id": "task_027",
-    "task": "Learn how to design an invoice approval workflow.",
-    "searchQuery": "how to design an invoice approval workflow"
-  },
-  {
-    "id": "task_028",
-    "task": "Learn how to build a backup staffing plan for a call center.",
-    "searchQuery": "how to build a backup staffing plan for a call center"
-  },
-  {
-    "id": "task_029",
-    "task": "Learn how to set a meeting room booking policy.",
-    "searchQuery": "how to set a meeting room booking policy"
-  },
-  {
-    "id": "task_030",
-    "task": "Learn how to calculate inventory reorder points.",
-    "searchQuery": "how to calculate inventory reorder points"
-  },
-  {
-    "id": "task_031",
-    "task": "Learn how to build an outbound prospecting workflow for B2B sales.",
-    "searchQuery": "how to build an outbound prospecting workflow for B2B sales"
-  },
-  {
-    "id": "task_032",
-    "task": "Learn how to research an account before a sales call.",
-    "searchQuery": "how to research an account before a sales call"
-  },
-  {
-    "id": "task_033",
-    "task": "Learn how to use a lead qualification framework.",
-    "searchQuery": "how to use a lead qualification framework"
-  },
-  {
-    "id": "task_034",
-    "task": "Learn how to write partnership outreach emails.",
-    "searchQuery": "how to write partnership outreach emails"
-  },
-  {
-    "id": "task_035",
-    "task": "Learn how to evaluate conference sponsorship opportunities.",
-    "searchQuery": "how to evaluate conference sponsorship opportunities"
-  },
-  {
-    "id": "task_036",
-    "task": "Learn how to build a local media contact list.",
-    "searchQuery": "how to build a local media contact list"
-  },
-  {
-    "id": "task_037",
-    "task": "Learn how to benchmark reseller programs.",
-    "searchQuery": "how to benchmark reseller programs"
-  },
-  {
-    "id": "task_038",
-    "task": "Learn how to research locations for a new franchise.",
-    "searchQuery": "how to research locations for a new franchise"
-  },
-  {
-    "id": "task_039",
-    "task": "Learn how to do grant prospect research for an arts organization.",
-    "searchQuery": "how to do grant prospect research for an arts organization"
-  },
-  {
-    "id": "task_040",
-    "task": "Learn how to segment donors for a fundraiser.",
-    "searchQuery": "how to segment donors for a fundraiser"
-  },
-  {
-    "id": "task_041",
-    "task": "Learn how to write an expense policy for remote employees.",
-    "searchQuery": "how to write an expense policy for remote employees"
-  },
-  {
-    "id": "task_042",
-    "task": "Learn how to build a budget for a product launch.",
-    "searchQuery": "how to build a budget for a product launch"
-  },
-  {
-    "id": "task_043",
-    "task": "Learn how to compare accounts payable automation tools.",
-    "searchQuery": "how to compare accounts payable automation tools"
-  },
-  {
-    "id": "task_044",
-    "task": "Learn how to compare payment processors for a subscription business.",
-    "searchQuery": "how to compare payment processors for a subscription business"
-  },
-  {
-    "id": "task_045",
-    "task": "Learn how to forecast cash flow for a small business.",
-    "searchQuery": "how to forecast cash flow for a small business"
-  },
-  {
-    "id": "task_046",
-    "task": "Learn how to negotiate vendor pricing.",
-    "searchQuery": "how to negotiate vendor pricing"
-  },
-  {
-    "id": "task_047",
-    "task": "Learn how to design a reimbursement workflow for field teams.",
-    "searchQuery": "how to design a reimbursement workflow for field teams"
-  },
-  {
-    "id": "task_048",
-    "task": "Learn how to compare bookkeeping software for a nonprofit.",
-    "searchQuery": "how to compare bookkeeping software for a nonprofit"
-  },
-  {
-    "id": "task_049",
-    "task": "Learn how to analyze procurement savings.",
-    "searchQuery": "how to analyze procurement savings"
-  },
-  {
-    "id": "task_050",
-    "task": "Learn how to budget a startup software stack.",
-    "searchQuery": "how to budget a startup software stack"
-  },
-  {
-    "id": "task_051",
-    "task": "Learn how to build an interview scorecard for a product manager.",
-    "searchQuery": "how to build an interview scorecard for a product manager"
-  },
-  {
-    "id": "task_052",
-    "task": "Learn how to source backend engineers.",
-    "searchQuery": "how to source backend engineers"
-  },
-  {
-    "id": "task_053",
-    "task": "Learn how to outline an employee handbook for a remote team.",
-    "searchQuery": "how to outline an employee handbook for a remote team"
-  },
-  {
-    "id": "task_054",
-    "task": "Learn how to write performance reviews for designers.",
-    "searchQuery": "how to write performance reviews for designers"
-  },
-  {
-    "id": "task_055",
-    "task": "Learn how to create an onboarding plan for sales hires.",
-    "searchQuery": "how to create an onboarding plan for sales hires"
-  },
-  {
-    "id": "task_056",
-    "task": "Learn how to run an internship program.",
-    "searchQuery": "how to run an internship program"
-  },
-  {
-    "id": "task_057",
-    "task": "Learn how to benchmark employee benefits for a startup.",
-    "searchQuery": "how to benchmark employee benefits for a startup"
-  },
-  {
-    "id": "task_058",
-    "task": "Learn how to make a training matrix for warehouse staff.",
-    "searchQuery": "how to make a training matrix for warehouse staff"
-  },
-  {
-    "id": "task_059",
-    "task": "Learn how to recruit volunteers for an event.",
-    "searchQuery": "how to recruit volunteers for an event"
-  },
-  {
-    "id": "task_060",
-    "task": "Learn how to compare background check providers.",
-    "searchQuery": "how to compare background check providers"
-  },
-  {
-    "id": "task_061",
-    "task": "Learn how to write a PRD for a new mobile feature.",
-    "searchQuery": "how to write a PRD for a new mobile feature"
-  },
-  {
-    "id": "task_062",
-    "task": "Learn how to create a user research plan for onboarding redesign.",
-    "searchQuery": "how to create a user research plan for onboarding redesign"
-  },
-  {
-    "id": "task_063",
-    "task": "Learn how to run an accessibility audit for a website.",
+    "id": "task_005",
+    "requesterQuestion": "How do teams run accessibility audits for a website?",
+    "workOrder": "Draft a short source-backed brief on running an accessibility audit for a website.",
     "searchQuery": "how to run an accessibility audit for a website"
   },
   {
-    "id": "task_064",
-    "task": "Learn how to create a bug triage severity matrix.",
-    "searchQuery": "how to create a bug triage severity matrix"
-  },
-  {
-    "id": "task_065",
-    "task": "Learn how to write release notes for SaaS updates.",
-    "searchQuery": "how to write release notes for SaaS updates"
-  },
-  {
-    "id": "task_066",
-    "task": "Learn how to structure API documentation.",
-    "searchQuery": "how to structure API documentation"
-  },
-  {
-    "id": "task_067",
-    "task": "Learn how to write QA test cases.",
-    "searchQuery": "how to write QA test cases"
-  },
-  {
-    "id": "task_068",
-    "task": "Learn how to compare mobile analytics tools.",
-    "searchQuery": "how to compare mobile analytics tools"
-  },
-  {
-    "id": "task_069",
-    "task": "Learn how to build an experimentation framework for landing pages.",
-    "searchQuery": "how to build an experimentation framework for landing pages"
-  },
-  {
-    "id": "task_070",
-    "task": "Learn how to write an incident postmortem.",
+    "id": "task_006",
+    "requesterQuestion": "How do you write an incident postmortem?",
+    "workOrder": "Draft a short source-backed brief on writing an incident postmortem.",
     "searchQuery": "how to write an incident postmortem"
   },
   {
-    "id": "task_071",
-    "task": "Learn how to perform a vendor security assessment.",
-    "searchQuery": "how to perform a vendor security assessment"
+    "id": "task_007",
+    "requesterQuestion": "How do teams research competitor pricing for a SaaS product?",
+    "workOrder": "Draft a short source-backed brief on researching competitor pricing for a SaaS product.",
+    "searchQuery": "how to research competitor pricing for a SaaS product"
   },
   {
-    "id": "task_072",
-    "task": "Learn how to prepare a startup for SOC 2.",
-    "searchQuery": "how to prepare a startup for SOC 2"
+    "id": "task_008",
+    "requesterQuestion": "How do organizations recruit volunteers for an event?",
+    "workOrder": "Draft a short source-backed brief on recruiting volunteers for an event.",
+    "searchQuery": "how to recruit volunteers for an event"
   },
   {
-    "id": "task_073",
-    "task": "Learn how to write a privacy policy for a newsletter site.",
-    "searchQuery": "how to write a privacy policy for a newsletter site"
+    "id": "task_009",
+    "requesterQuestion": "How do museums write object labels?",
+    "workOrder": "Draft a short source-backed brief on how museums write object labels.",
+    "searchQuery": "how do museums write object labels"
   },
   {
-    "id": "task_074",
-    "task": "Learn how to compare cookie consent tools.",
-    "searchQuery": "how to compare cookie consent tools"
+    "id": "task_010",
+    "requesterQuestion": "How do you plan an oral history interview?",
+    "workOrder": "Draft a short source-backed brief on planning an oral history interview.",
+    "searchQuery": "how to plan an oral history interview"
   },
   {
-    "id": "task_075",
-    "task": "Learn how to write a data retention policy.",
-    "searchQuery": "how to write a data retention policy"
+    "id": "task_011",
+    "requesterQuestion": "How do public monuments shape historical memory?",
+    "workOrder": "Draft a short source-backed brief on how public monuments shape historical memory.",
+    "searchQuery": "how do public monuments shape historical memory"
   },
   {
-    "id": "task_076",
-    "task": "Learn how to build a phishing response playbook.",
-    "searchQuery": "how to build a phishing response playbook"
+    "id": "task_012",
+    "requesterQuestion": "How do adaptations change stories across media?",
+    "workOrder": "Draft a short source-backed brief on how adaptations change stories across media.",
+    "searchQuery": "how do adaptations change stories across media"
   },
   {
-    "id": "task_077",
-    "task": "Learn how to run an access review for SaaS apps.",
-    "searchQuery": "how to run an access review for SaaS apps"
+    "id": "task_013",
+    "requesterQuestion": "How do archives describe born-digital collections?",
+    "workOrder": "Draft a short source-backed brief on how archives describe born-digital collections.",
+    "searchQuery": "how do archives describe born-digital collections"
   },
   {
-    "id": "task_078",
-    "task": "Learn how to compare cyber insurance options.",
-    "searchQuery": "how to compare cyber insurance options"
+    "id": "task_014",
+    "requesterQuestion": "How do documentary projects clear rights for reused media?",
+    "workOrder": "Draft a short source-backed brief on how documentary projects clear rights for reused media.",
+    "searchQuery": "how do documentary projects clear rights for reused media"
   },
   {
-    "id": "task_079",
-    "task": "Learn how to write an AI usage policy for employees.",
-    "searchQuery": "how to write an AI usage policy for employees"
+    "id": "task_015",
+    "requesterQuestion": "How do exhibitions structure interpretive wall text?",
+    "workOrder": "Draft a short source-backed brief on how exhibitions structure interpretive wall text.",
+    "searchQuery": "how do exhibitions structure interpretive wall text"
   },
   {
-    "id": "task_080",
-    "task": "Learn how to manage open source license compliance.",
-    "searchQuery": "how to manage open source license compliance"
+    "id": "task_016",
+    "requesterQuestion": "How do researchers build a literature review matrix?",
+    "workOrder": "Draft a short source-backed brief on building a literature review matrix.",
+    "searchQuery": "how to build a literature review matrix"
   },
   {
-    "id": "task_081",
-    "task": "Learn how to plan a blog content calendar.",
-    "searchQuery": "how to plan a blog content calendar"
+    "id": "task_017",
+    "requesterQuestion": "How do games teach players without explicit tutorials?",
+    "workOrder": "Draft a short source-backed brief on how games teach players without explicit tutorials.",
+    "searchQuery": "how do games teach players without tutorials"
   },
   {
-    "id": "task_082",
-    "task": "Learn how to run an SEO competitor gap analysis.",
-    "searchQuery": "how to run an SEO competitor gap analysis"
+    "id": "task_018",
+    "requesterQuestion": "What makes game UI accessible?",
+    "workOrder": "Draft a short source-backed brief on accessibility considerations in game UI.",
+    "searchQuery": "what makes game ui accessible"
   },
   {
-    "id": "task_083",
-    "task": "Learn how to test newsletter subject lines.",
-    "searchQuery": "how to test newsletter subject lines"
+    "id": "task_019",
+    "requesterQuestion": "How does level design guide player attention?",
+    "workOrder": "Draft a short source-backed brief on how level design guides player attention.",
+    "searchQuery": "how does level design guide player attention"
   },
   {
-    "id": "task_084",
-    "task": "Learn how to plan a webinar.",
-    "searchQuery": "how to plan a webinar"
+    "id": "task_020",
+    "requesterQuestion": "How do designers use playtesting feedback?",
+    "workOrder": "Draft a short source-backed brief on how playtesting feedback is collected and used.",
+    "searchQuery": "how do designers use playtesting feedback"
   },
   {
-    "id": "task_085",
-    "task": "Learn how to do influencer outreach.",
-    "searchQuery": "how to do influencer outreach"
+    "id": "task_021",
+    "requesterQuestion": "How do puzzle games signal rules without text?",
+    "workOrder": "Draft a short source-backed brief on how puzzle games signal rules without relying on text.",
+    "searchQuery": "how do puzzle games signal rules without text"
   },
   {
-    "id": "task_086",
-    "task": "Learn how to write an editorial brief for a product tutorial.",
-    "searchQuery": "how to write an editorial brief for a product tutorial"
+    "id": "task_022",
+    "requesterQuestion": "How do multiplayer games teach social norms to players?",
+    "workOrder": "Draft a short source-backed brief on how multiplayer games teach social norms to players.",
+    "searchQuery": "how do multiplayer games teach social norms to players"
   },
   {
-    "id": "task_087",
-    "task": "Learn how to compare social listening tools.",
-    "searchQuery": "how to compare social listening tools"
+    "id": "task_023",
+    "requesterQuestion": "How do level designers use lighting to guide navigation?",
+    "workOrder": "Draft a short source-backed brief on how level designers use lighting to guide player navigation.",
+    "searchQuery": "how do level designers use lighting to guide player navigation"
   },
   {
-    "id": "task_088",
-    "task": "Learn how to research landing page copy before writing.",
-    "searchQuery": "how to research landing page copy before writing"
+    "id": "task_024",
+    "requesterQuestion": "How do designers structure onboarding for complex strategy games?",
+    "workOrder": "Draft a short source-backed brief on onboarding players in complex strategy games.",
+    "searchQuery": "how do designers structure onboarding for complex strategy games"
   },
   {
-    "id": "task_089",
-    "task": "Learn how to run a case study interview.",
-    "searchQuery": "how to run a case study interview"
+    "id": "task_025",
+    "requesterQuestion": "How can students evaluate online sources?",
+    "workOrder": "Draft a short source-backed brief on how students can evaluate online sources.",
+    "searchQuery": "how can students evaluate online sources"
   },
   {
-    "id": "task_090",
-    "task": "Learn how to do podcast guest outreach.",
-    "searchQuery": "how to do podcast guest outreach"
+    "id": "task_026",
+    "requesterQuestion": "How do teachers structure peer review?",
+    "workOrder": "Draft a short source-backed brief on how peer review activities are structured in classrooms.",
+    "searchQuery": "how do teachers structure peer review"
   },
   {
-    "id": "task_091",
-    "task": "Learn how to plan business travel for a conference trip.",
-    "searchQuery": "how to plan business travel for a conference trip"
+    "id": "task_027",
+    "requesterQuestion": "How are rubrics used in project-based learning?",
+    "workOrder": "Draft a short source-backed brief on how rubrics are used in project-based learning.",
+    "searchQuery": "how are rubrics used in project-based learning"
   },
   {
-    "id": "task_092",
-    "task": "Learn how to research venues for a workshop event.",
-    "searchQuery": "how to research venues for a workshop event"
+    "id": "task_028",
+    "requesterQuestion": "How is media literacy taught in classrooms?",
+    "workOrder": "Draft a short source-backed brief on how media literacy is taught in classrooms.",
+    "searchQuery": "how is media literacy taught in classrooms"
   },
   {
-    "id": "task_093",
-    "task": "Learn how to compare local catering vendors.",
-    "searchQuery": "how to compare local catering vendors"
+    "id": "task_029",
+    "requesterQuestion": "How do public libraries support digital access?",
+    "workOrder": "Draft a short source-backed brief on how public libraries support digital access.",
+    "searchQuery": "how do public libraries support digital access"
   },
   {
-    "id": "task_094",
-    "task": "Learn how to plan an executive roadshow itinerary.",
-    "searchQuery": "how to plan an executive roadshow itinerary"
+    "id": "task_030",
+    "requesterQuestion": "How are community gardens organized?",
+    "workOrder": "Draft a short source-backed brief on how community gardens are organized.",
+    "searchQuery": "how are community gardens organized"
   },
   {
-    "id": "task_095",
-    "task": "Learn how to plan a community volunteer event.",
-    "searchQuery": "how to plan a community volunteer event"
+    "id": "task_031",
+    "requesterQuestion": "How do food banks coordinate donations?",
+    "workOrder": "Draft a short source-backed brief on how local food banks coordinate donations.",
+    "searchQuery": "how do food banks coordinate donations"
   },
   {
-    "id": "task_096",
-    "task": "Learn how to find sponsors for a school fundraiser.",
-    "searchQuery": "how to find sponsors for a school fundraiser"
+    "id": "task_032",
+    "requesterQuestion": "How can tenants document maintenance issues?",
+    "workOrder": "Draft a short source-backed brief on how tenants can document apartment maintenance issues.",
+    "searchQuery": "how can tenants document maintenance issues"
   },
   {
-    "id": "task_097",
-    "task": "Learn how to research apartment rental markets in a new city.",
-    "searchQuery": "how to research apartment rental markets in a new city"
+    "id": "task_033",
+    "requesterQuestion": "Why do urban heat islands happen?",
+    "workOrder": "Draft a short source-backed brief on why urban heat islands occur.",
+    "searchQuery": "why do urban heat islands happen"
   },
   {
-    "id": "task_098",
-    "task": "Learn how to make a relocation checklist for an employee transfer.",
-    "searchQuery": "how to make a relocation checklist for an employee transfer"
+    "id": "task_034",
+    "requesterQuestion": "How do citizen science projects collect data?",
+    "workOrder": "Draft a short source-backed brief on how citizen science projects collect data.",
+    "searchQuery": "how do citizen science projects collect data"
   },
   {
-    "id": "task_099",
-    "task": "Learn how to assess travel risks for an international trip.",
-    "searchQuery": "how to assess travel risks for an international trip"
+    "id": "task_035",
+    "requesterQuestion": "How does misinformation spread online?",
+    "workOrder": "Draft a short source-backed brief on how misinformation spreads online.",
+    "searchQuery": "how does misinformation spread online"
   },
   {
-    "id": "task_100",
-    "task": "Learn how to plan trade show booth logistics.",
-    "searchQuery": "how to plan trade show booth logistics"
+    "id": "task_036",
+    "requesterQuestion": "How do local governments communicate boil water notices?",
+    "workOrder": "Draft a short source-backed brief on how local governments communicate boil water notices.",
+    "searchQuery": "how do local governments communicate boil water notices"
   }
 ]

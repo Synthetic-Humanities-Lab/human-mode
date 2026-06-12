@@ -12,7 +12,7 @@ export function renderExportSummary(exportData: SessionExport): string {
 export function downloadDeliverableFile(task: string, exportData: SessionExport): void {
   if (!exportData.deliverable) return;
   const safeTask = slugifyTask(task || 'deliverable');
-  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Deliverable</title></head><body><h1>${escapeHtml(task || 'Deliverable')}</h1><div>${escapeHtml(exportData.deliverable).replace(/\n/g, '<br>')}</div></body></html>`;
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Deliverable</title></head><body><h1>${escapeHtml(task || 'Deliverable')}</h1><p><strong>Requester Question:</strong> ${escapeHtml(exportData.requesterQuestion || 'N/A')}</p><p><strong>Operator Work Order:</strong> ${escapeHtml(exportData.workOrder || task || 'N/A')}</p><div>${escapeHtml(exportData.deliverable).replace(/\n/g, '<br>')}</div></body></html>`;
   triggerDownload(new Blob([html], { type: 'application/msword' }), `${safeTask}-deliverable.doc`);
 }
 

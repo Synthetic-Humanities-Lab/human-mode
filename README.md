@@ -1,6 +1,6 @@
 # Human Mode
 
-Human Mode is a Chrome extension and research prototype for constrained, human-in-the-loop web research. Instead of hiding research behind automation, it keeps the browser user in direct control while instrumenting the same phases an agent would normally perform: task assignment, retrieval, inspection, source ordering, note capture, context management, and final drafting.
+Human Mode is a Chrome extension and research prototype for constrained, human-in-the-loop web research. It frames the player as a human operator routed into an agent-compatible workflow: a person carrying out retrieval, ranking, note capture, context management, and synthesis by hand inside the same step order an automated system would use.
 
 ## Motivation
 
@@ -24,7 +24,7 @@ The built extension is generated into `dist/`.
 ## Experimental Protocol
 
 1. Start a session from the side panel.
-2. Accept the randomly assigned task.
+2. Review the requester question and operator work order.
 3. Inspect search results and candidate pages.
 4. Add candidate sources from the side panel.
 5. Finalize the candidate set.
@@ -36,7 +36,19 @@ The built extension is generated into `dist/`.
 
 ## Data And Privacy Model
 
-Human Mode stores session state in `chrome.storage.local` under `humanModeSession`. It reads active-tab URL/title metadata, committed notes, draft text, task metadata, budget counters, and runtime trace events to support the user-facing workflow. The extension does not include analytics, does not call a developer-operated server, and does not transmit user data off-device.
+Human Mode stores session state in `chrome.storage.local` under `humanModeSession`. It reads active-tab URL/title metadata, committed notes, draft text, requester-question metadata, work-order metadata, budget counters, and runtime trace events to support the user-facing workflow. The extension does not include analytics, does not call a developer-operated server, and does not transmit user data off-device.
+
+## Customizing The Task Bank
+
+Human Mode ships with a default task bank in `src/shared/task-bank.json`. To adapt the experience for a course, workshop, or research exercise, edit that file directly.
+
+Each task should include:
+
+- a requester question
+- an operator work order
+- a search query or search seed
+
+For best results, keep tasks short, researchable, and appropriate for source-backed synthesis.
 
 ## Reproducibility
 

@@ -18,6 +18,7 @@ import {
   formatMoneyPrecise,
   getBudgetRemainingCents,
   getContextBreakdownFromParts,
+  getTaskContextText,
   getOperationsMax,
   isCandidatePage,
   makeId,
@@ -60,6 +61,7 @@ const els = {
   onboardingSupport: byId<HTMLElement>('onboardingSupport'),
   onboardingDossier: byId<HTMLElement>('onboardingDossier'),
   onboardingPrevBtn: byId<HTMLButtonElement>('onboardingPrevBtn'),
+  onboardingFaqBtn: byId<HTMLButtonElement>('onboardingFaqBtn'),
   onboardingNextBtn: byId<HTMLButtonElement>('onboardingNextBtn'),
   dismissOnboardingBtn: byId<HTMLButtonElement>('dismissOnboardingBtn'),
   stateValue: byId<HTMLElement>('stateValue'),
@@ -76,7 +78,8 @@ const els = {
   budgetTotal: byId<HTMLElement>('budgetTotal'),
   budgetFill: byId<HTMLElement>('budgetFill'),
   budgetMeta: byId<HTMLElement>('budgetMeta'),
-  taskDisplay: byId<HTMLElement>('taskDisplay'),
+  requesterQuestionDisplay: byId<HTMLElement>('requesterQuestionDisplay'),
+  workOrderDisplay: byId<HTMLElement>('workOrderDisplay'),
   budgetDisplay: byId<HTMLElement>('budgetDisplay'),
   rankCandidatesList: byId<HTMLElement>('rankCandidatesList'),
   addRankCandidateBtn: byId<HTMLButtonElement>('addRankCandidateBtn'),
@@ -135,6 +138,10 @@ function bindEvents(): void {
     onboardingStepIndex = Math.max(0, onboardingStepIndex - 1);
     renderOnboarding();
   });
+  els.onboardingFaqBtn.addEventListener('click', () => {
+    onboardingStepIndex = getFirstFaqStepIndex();
+    renderOnboarding();
+  });
   els.onboardingNextBtn.addEventListener('click', () => {
     if (onboardingStepIndex >= onboardingSteps.length - 1) {
       dismissOnboarding();
@@ -147,7 +154,7 @@ function bindEvents(): void {
   els.startSessionBtn.addEventListener('click', async () => {
     const response = await sendMessage({ type: 'START_SESSION' });
     handleResponse(response);
-    if (response?.ok) showSideToast('Assigned a random task and opened Google results.', 'success');
+    if (response?.ok) showSideToast('Assigned a requester question and opened source intake.', 'success');
   });
   els.pauseResumeSessionBtn.addEventListener('click', async () => {
     const paused = session?.sessionState === SessionState.PAUSED;
@@ -282,9 +289,11 @@ function render(): void {
   els.budgetSpent.textContent = formatMoneyPrecise(session.spendCents);
   els.budgetTotal.textContent = formatMoney(session.budgetCents);
   els.budgetMeta.textContent = `Ops ${formatMoneyPrecise(spendOpsCents)} | Context ${formatMoneyPrecise(spendContextCents)} | Remaining ${formatMoneyPrecise(getBudgetRemainingCents(session))} | Context rate ${formatMoney(TOKEN_COST_CENTS_PER_TOKEN)} / token`;
-  els.taskDisplay.textContent = session.task || 'No task assigned yet.';
-  els.taskDisplay.classList.toggle('muted', !session.task);
-  els.budgetDisplay.textContent = `Fixed at ${formatMoney(session.budgetCents || DEFAULT_BUDGET_CENTS)} per session.`;
+  els.requesterQuestionDisplay.textContent = session.requesterQuestion || 'No requester question assigned yet.';
+  els.requesterQuestionDisplay.classList.toggle('muted', !session.requesterQuestion);
+  els.workOrderDisplay.textContent = session.workOrder || 'No work order assigned yet.';
+  els.workOrderDisplay.classList.toggle('muted', !session.workOrder);
+  els.budgetDisplay.textContent = `Maximum completion budget: ${formatMoney(session.budgetCents || DEFAULT_BUDGET_CENTS)}.`;
   els.budgetDisplay.classList.remove('muted');
 
   setBar(els.operationsFill, opsRatio, 0.85);
@@ -375,30 +384,51 @@ function dismissOnboarding(): void {
   renderOnboarding();
 }
 
+function getFirstFaqStepIndex(): number {
+  const index = onboardingSteps.findIndex(step => step.type === 'faq');
+  return index === -1 ? 0 : index;
+}
+
+function getFaqPageMeta(currentIndex: number): string {
+  const faqSteps = onboardingSteps.filter(step => step.type === 'faq');
+  const faqIndex = onboardingSteps.slice(0, currentIndex + 1).filter(step => step.type === 'faq').length;
+  return `Page ${faqIndex} of ${faqSteps.length}`;
+}
+
 function renderOnboarding(): void {
   const step = onboardingSteps[onboardingStepIndex] || onboardingSteps[0];
   if (!step) return;
   const isLastStep = onboardingStepIndex === onboardingSteps.length - 1;
+  const isFaq = step.type === 'faq';
   els.onboardingSection.classList.toggle('hidden', !onboardingVisible);
   document.body.classList.toggle('onboarding-open', onboardingVisible);
   els.onboardingSection.dataset.onboardingType = step.type || 'induction';
   els.onboardingEyebrow.textContent = step.eyebrow || 'First-time guide';
   els.onboardingTitle.textContent = step.title;
-  els.onboardingStepMeta.textContent = `Page ${onboardingStepIndex + 1} of ${onboardingSteps.length}`;
+  els.onboardingStepMeta.textContent = isFaq ? getFaqPageMeta(onboardingStepIndex) : `Page ${onboardingStepIndex + 1} of ${onboardingSteps.length}`;
   renderOnboardingStep(step);
   els.onboardingPrevBtn.disabled = onboardingStepIndex === 0;
-  els.onboardingNextBtn.textContent = isLastStep ? 'Got It' : 'Next';
-  els.dismissOnboardingBtn.textContent = isLastStep ? 'Close' : 'Skip';
+  els.onboardingFaqBtn.disabled = isFaq;
+  els.onboardingNextBtn.disabled = isLastStep;
+  els.onboardingNextBtn.textContent = 'Next';
+  els.dismissOnboardingBtn.textContent = 'Close';
 }
 
 function renderOnboardingStep(step: OnboardingStep): void {
   const isDossier = step.type === 'dossier';
-  els.onboardingInduction.classList.toggle('hidden', isDossier);
-  els.onboardingDossier.classList.toggle('hidden', !isDossier);
+  const isFaq = step.type === 'faq';
+  els.onboardingInduction.classList.toggle('hidden', isDossier || isFaq);
+  els.onboardingDossier.classList.toggle('hidden', !isDossier && !isFaq);
   if (isDossier) {
     els.onboardingBody.textContent = '';
     els.onboardingSupport.textContent = '';
     els.onboardingDossier.innerHTML = renderOnboardingDossier(step.flow || []);
+    return;
+  }
+  if (isFaq) {
+    els.onboardingBody.textContent = '';
+    els.onboardingSupport.textContent = '';
+    els.onboardingDossier.innerHTML = renderOnboardingFaq(step);
     return;
   }
   els.onboardingBody.textContent = step.body || '';
@@ -418,6 +448,16 @@ function renderOnboardingDossier(flow: NonNullable<OnboardingStep['flow']>): str
     </article>
   `).join('');
   return `<div class="onboarding-dossier-route">${slips}</div>`;
+}
+
+function renderOnboardingFaq(step: OnboardingStep): string {
+  return `
+    <article class="onboarding-faq-card">
+      <div class="onboarding-faq-meta">Common questions from humans entering agent-compatible work.</div>
+      <div class="onboarding-faq-question">${escapeHtml(step.faqQuestion || '')}</div>
+      <div class="onboarding-faq-answer">${escapeHtml(step.faqAnswer || '')}</div>
+    </article>
+  `;
 }
 
 async function addCurrentPageCandidate(): Promise<void> {
@@ -662,7 +702,7 @@ function getLiveNotesText(): string {
 
 function getProjectedContextBreakdown() {
   return getContextBreakdownFromParts({
-    task: session?.task || '',
+    task: getTaskContextText(session || {}),
     notesText: getLiveNotesText(),
     draftText: els.draftInput.value || ''
   });

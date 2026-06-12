@@ -5,6 +5,7 @@ import {
   OPERATION_COST_CENTS,
   TOKEN_COST_CENTS_PER_TOKEN
 } from './types';
+import { getTaskContextText } from './task-bank';
 
 export function roughTokenCount(text: string | null | undefined): number {
   const trimmed = String(text || '').trim();
@@ -26,7 +27,7 @@ export function getContextBreakdownFromParts(parts: {
 export function getContextBreakdown(session: AgentSession): ContextBreakdown {
   const notesText = (session.notes || []).map(note => note.committedText || '').join('\n');
   return getContextBreakdownFromParts({
-    task: session.task,
+    task: getTaskContextText(session),
     notesText,
     draftText: session.draft?.committedText || ''
   });

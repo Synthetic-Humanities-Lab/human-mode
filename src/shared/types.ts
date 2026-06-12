@@ -60,7 +60,8 @@ export const OPERATION_COST_CENTS = 1;
 
 export interface TaskBankItem {
   id: string;
-  task: string;
+  requesterQuestion: string;
+  workOrder: string;
   searchQuery: string;
 }
 
@@ -103,6 +104,8 @@ export interface AgentSession {
   sessionState: SessionState;
   phase: Phase;
   task: string;
+  requesterQuestion: string;
+  workOrder: string;
   taskBankTaskId: string;
   taskSearchQuery: string;
   budgetCents: number;
@@ -133,6 +136,8 @@ export interface AgentSession {
 export interface SessionExport {
   outcome: SessionState;
   task: string;
+  requesterQuestion: string;
+  workOrder: string;
   taskBankTaskId: string;
   taskSearchQuery: string;
   budgetCents: number;

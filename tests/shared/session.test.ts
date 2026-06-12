@@ -44,7 +44,9 @@ describe('session model', () => {
   it('accounts for context and export statistics', () => {
     const session = createEmptySession();
     session.sessionState = SessionState.COMPLETED;
-    session.task = 'Investigate constrained research.';
+    session.requesterQuestion = 'Why?';
+    session.workOrder = 'Do thing.';
+    session.task = session.workOrder;
     session.notes = [{ id: 'note_1', sourceUrl: 'https://example.com', sourceTitle: 'Example', committedText: 'one useful note', updatedAt: 1 }];
     session.draft = { committedText: 'final draft', updatedAt: 2 };
     session.trace = [
@@ -52,11 +54,13 @@ describe('session model', () => {
       { id: 'trace_2', at: 2, kind: TraceKind.DRAFT_COMMIT, detail: 'draft', phase: Phase.DELIVERABLE }
     ];
 
-    expect(getContextBreakdown(session).total).toBe(8);
+    expect(getContextBreakdown(session).total).toBe(13);
     expect(getOperationsMax(session)).toBeGreaterThanOrEqual(session.operationsUsed);
 
     const exported = makeSessionExport(session, SessionState.COMPLETED);
     expect(exported.stats.notesCommitted).toBe(1);
     expect(exported.deliverable).toBe('final draft');
+    expect(exported.requesterQuestion).toBe('Why?');
+    expect(exported.workOrder).toBe('Do thing.');
   });
 });

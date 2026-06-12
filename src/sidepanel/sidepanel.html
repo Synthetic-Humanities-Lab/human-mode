@@ -11,7 +11,7 @@
     <header class="header panel">
       <div>
         <h1>Human Mode</h1>
-        <p class="subtitle">Work through an automatically assigned research task like a constrained agent.</p>
+        <p class="subtitle">Complete an assigned research routine as a proudly human operator in an agent-compatible workflow.</p>
       </div>
       <div class="header-actions">
         <button id="openOnboardingBtn" class="secondary ghost-button" type="button">How It Works</button>
@@ -29,7 +29,7 @@
         <div id="onboardingInduction" class="onboarding-induction">
           <div class="onboarding-memo-meta" aria-hidden="true">
             <span>Form HM-01</span>
-            <span>AI Access: Denied</span>
+            <span>Operator Induction</span>
           </div>
           <p id="onboardingBody" class="onboarding-body"></p>
           <p id="onboardingSupport" class="onboarding-support"></p>
@@ -41,8 +41,9 @@
         <div id="onboardingDossier" class="onboarding-dossier hidden"></div>
         <div class="button-row">
           <button id="onboardingPrevBtn" class="secondary" type="button">Back</button>
+          <button id="onboardingFaqBtn" class="secondary" type="button">FAQ</button>
           <button id="onboardingNextBtn" type="button">Next</button>
-          <button id="dismissOnboardingBtn" class="secondary" type="button">Skip</button>
+          <button id="dismissOnboardingBtn" class="secondary" type="button">Close</button>
         </div>
       </div>
     </section>
@@ -69,7 +70,7 @@
         <div id="phaseValue" class="value">START</div>
       </div>
       <div class="stat-card full">
-        <div class="label">Budget</div>
+        <div class="label">Session Allocation</div>
         <div class="value"><span id="budgetSpent">$0.00</span> / <span id="budgetTotal">$10.00</span></div>
         <div class="bar"><div id="budgetFill" class="fill"></div></div>
         <div id="budgetMeta" class="meta">Ops $0.00 | Context $0.00 | Remaining $10.00 | Rate $0.01 / token</div>
@@ -94,12 +95,16 @@
         <span class="hint">Randomly assigned when the session starts.</span>
       </div>
       <div class="goal-block">
-        <div class="field-label">Task</div>
-        <div id="taskDisplay" class="goal-value muted">No task assigned yet.</div>
+        <div class="field-label">Requester Question</div>
+        <div id="requesterQuestionDisplay" class="goal-value muted">No requester question assigned yet.</div>
       </div>
       <div class="goal-block">
-        <div class="field-label">Budget</div>
-        <div id="budgetDisplay" class="goal-value">Fixed at $10.00 per session.</div>
+        <div class="field-label">Operator Work Order</div>
+        <div id="workOrderDisplay" class="goal-value muted">No work order assigned yet.</div>
+      </div>
+      <div class="goal-block">
+        <div class="field-label">Session Allocation</div>
+        <div id="budgetDisplay" class="goal-value">Fixed by requester for this run.</div>
       </div>
     </section>
 
@@ -148,19 +153,6 @@
       </div>
       <div class="button-row">
         <button id="commitDraftBtn" class="secondary">Commit Draft</button>
-      </div>
-    </section>
-
-    <section class="panel section">
-      <div class="section-header">
-        <h2>Premium Tools</h2>
-        <span class="hint">Not available on the current plan.</span>
-      </div>
-      <div class="premium-list">
-        <div class="premium-item"><span>Auto-extract notes</span><span class="premium-tag">Pro</span></div>
-        <div class="premium-item"><span>Summarize page automatically</span><span class="premium-tag">Pro</span></div>
-        <div class="premium-item"><span>Compare sources</span><span class="premium-tag">Pro</span></div>
-        <div class="premium-item"><span>Search within notes</span><span class="premium-tag">Enterprise</span></div>
       </div>
     </section>
 

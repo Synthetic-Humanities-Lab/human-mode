@@ -20,6 +20,8 @@ export function createEmptySession(): AgentSession {
     sessionState: SessionState.OFF,
     phase: Phase.START,
     task: '',
+    requesterQuestion: '',
+    workOrder: '',
     taskBankTaskId: '',
     taskSearchQuery: '',
     budgetCents: DEFAULT_BUDGET_CENTS,
@@ -64,6 +66,9 @@ export function hydrateSession(input: unknown): AgentSession {
   }
 
   session.task = stringFrom(source.task);
+  session.requesterQuestion = stringFrom(source.requesterQuestion);
+  session.workOrder = stringFrom(source.workOrder, session.task);
+  session.task = session.workOrder || session.task;
   session.taskBankTaskId = stringFrom(source.taskBankTaskId);
   session.taskSearchQuery = stringFrom(source.taskSearchQuery, stringFrom(source.currentSearchQuery));
   session.budgetCents = positiveNumberFrom(source.budgetCents, DEFAULT_BUDGET_CENTS);
@@ -127,6 +132,8 @@ export function makeSessionExport(session: AgentSession, outcome: SessionState):
   return {
     outcome,
     task: session.task,
+    requesterQuestion: session.requesterQuestion,
+    workOrder: session.workOrder,
     taskBankTaskId: session.taskBankTaskId,
     taskSearchQuery: session.taskSearchQuery,
     budgetCents: session.budgetCents,
