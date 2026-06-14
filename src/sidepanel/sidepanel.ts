@@ -395,6 +395,12 @@ function getFaqPageMeta(currentIndex: number): string {
   return `Page ${faqIndex} of ${faqSteps.length}`;
 }
 
+function getIntroPageMeta(currentIndex: number): string {
+  const introSteps = onboardingSteps.filter(step => step.type !== 'faq');
+  const introIndex = onboardingSteps.slice(0, currentIndex + 1).filter(step => step.type !== 'faq').length;
+  return `Page ${introIndex} of ${introSteps.length}`;
+}
+
 function renderOnboarding(): void {
   const step = onboardingSteps[onboardingStepIndex] || onboardingSteps[0];
   if (!step) return;
@@ -405,9 +411,10 @@ function renderOnboarding(): void {
   els.onboardingSection.dataset.onboardingType = step.type || 'induction';
   els.onboardingEyebrow.textContent = step.eyebrow || 'First-time guide';
   els.onboardingTitle.textContent = step.title;
-  els.onboardingStepMeta.textContent = isFaq ? getFaqPageMeta(onboardingStepIndex) : `Page ${onboardingStepIndex + 1} of ${onboardingSteps.length}`;
+  els.onboardingStepMeta.textContent = isFaq ? getFaqPageMeta(onboardingStepIndex) : getIntroPageMeta(onboardingStepIndex);
   renderOnboardingStep(step);
   els.onboardingPrevBtn.disabled = onboardingStepIndex === 0;
+  els.onboardingFaqBtn.classList.toggle('hidden', isFaq);
   els.onboardingFaqBtn.disabled = isFaq;
   els.onboardingNextBtn.disabled = isLastStep;
   els.onboardingNextBtn.textContent = 'Next';
@@ -431,8 +438,10 @@ function renderOnboardingStep(step: OnboardingStep): void {
     els.onboardingDossier.innerHTML = renderOnboardingFaq(step);
     return;
   }
-  els.onboardingBody.textContent = step.body || '';
+  els.onboardingBody.innerHTML = step.bodyHtml || escapeHtml(step.body || '');
   els.onboardingSupport.textContent = step.support || '';
+  els.onboardingBody.classList.toggle('hidden', !((step.bodyHtml || step.body || '').trim()));
+  els.onboardingSupport.classList.toggle('hidden', !(step.support || '').trim());
   els.onboardingDossier.innerHTML = '';
 }
 
@@ -444,7 +453,6 @@ function renderOnboardingDossier(flow: NonNullable<OnboardingStep['flow']>): str
         <div class="onboarding-slip-title">${escapeHtml(item.label)}</div>
         <div class="onboarding-slip-text">${escapeHtml(item.copy)}</div>
       </div>
-      <div class="onboarding-slip-stamp">${escapeHtml(item.stamp)}</div>
     </article>
   `).join('');
   return `<div class="onboarding-dossier-route">${slips}</div>`;

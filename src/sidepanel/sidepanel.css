@@ -501,13 +501,11 @@ button:focus {
 .onboarding-body,
 .onboarding-support,
 .onboarding-memo-meta,
-.onboarding-stamps,
 .onboarding-faq-meta,
 .onboarding-faq-question,
 .onboarding-faq-answer,
 .onboarding-slip-title,
 .onboarding-slip-text,
-.onboarding-slip-stamp,
 .onboarding-slip-number {
   letter-spacing: 0;
 }
@@ -556,6 +554,13 @@ button:focus {
   text-transform: none;
 }
 
+.onboarding-body-emphasis {
+  color: var(--muted);
+  font-size: 0.96em;
+  text-shadow: none;
+  opacity: 0.95;
+}
+
 .onboarding-support {
   padding-top: 11px;
   border-top: 1px solid var(--line-soft);
@@ -563,28 +568,6 @@ button:focus {
   font-size: 19px;
   line-height: 1.32;
   text-transform: none;
-}
-
-.onboarding-stamps {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.onboarding-stamps span {
-  border: 1px solid rgba(124, 81, 76, 0.58);
-  border-radius: 2px;
-  padding: 5px 7px 4px;
-  background: rgba(248, 251, 248, 0.54);
-  color: var(--danger);
-  font-size: 16px;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-.onboarding-stamps span:first-child {
-  color: var(--accent-strong);
-  border-color: rgba(85, 121, 123, 0.58);
 }
 
 .onboarding-dossier {
@@ -647,7 +630,7 @@ button:focus {
   display: grid;
   grid-template-columns: 38px minmax(0, 1fr);
   gap: 5px 10px;
-  align-items: center;
+  align-items: start;
   border: 1px solid var(--line);
   border-radius: 3px;
   padding: 9px 10px;
@@ -687,30 +670,6 @@ button:focus {
   line-height: 1.25;
   text-transform: none;
   overflow-wrap: anywhere;
-}
-
-.onboarding-slip-stamp {
-  grid-column: 2;
-  justify-self: start;
-  border: 1px solid rgba(85, 121, 123, 0.52);
-  border-radius: 2px;
-  padding: 4px 6px 3px;
-  background: rgba(248, 251, 248, 0.72);
-  color: var(--accent-strong);
-  font-size: 15px;
-  line-height: 1;
-  text-transform: uppercase;
-}
-
-@media (min-width: 460px) {
-  .onboarding-dossier-slip {
-    grid-template-columns: 38px minmax(0, 1fr) auto;
-  }
-
-  .onboarding-slip-stamp {
-    grid-column: 3;
-    align-self: start;
-  }
 }
 
 @media (max-height: 760px) {
