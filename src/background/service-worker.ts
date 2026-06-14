@@ -99,11 +99,14 @@ async function bounceToTrackedTab(
   closeBlockedTab = false
 ): Promise<void> {
   if (!session.activeTabId) return;
+  const trackedTab = await chrome.tabs.get(session.activeTabId).catch(() => null);
+  if (!trackedTab?.id) {
+    await persistAndBroadcastSession(createEmptySession());
+    return;
+  }
   if (blockedTabId && closeBlockedTab) {
     await chrome.tabs.remove(blockedTabId).catch(() => undefined);
   }
-  const trackedTab = await chrome.tabs.get(session.activeTabId).catch(() => null);
-  if (!trackedTab?.id) return;
   const bounceToken = makeId('bounce');
   pendingTabBounceTokens.set(trackedTab.id, bounceToken);
   for (const delayMs of [0, 60, 180, 360, 720]) {
