@@ -1,5 +1,7 @@
 import { AgentSession, SessionExport } from './types';
 
+export const PDF_TOOL_UNAVAILABLE_MESSAGE = 'You do not have access to the PDF tool.';
+
 export type RuntimeMessage =
   | { type: 'GET_SESSION' }
   | { type: 'START_SESSION' }
@@ -8,6 +10,7 @@ export type RuntimeMessage =
   | { type: 'COMMIT_NOTE_BLOCK'; payload?: { id?: string; committedText?: string; sourceUrl?: string; sourceTitle?: string } }
   | { type: 'OPEN_NOTE_REVISION'; payload?: { id?: string } }
   | { type: 'DELETE_NOTE_BLOCK'; payload?: { id?: string } }
+  | { type: 'BLOCK_PDF_NAVIGATION'; payload?: { url?: string; title?: string } }
   | { type: 'ADD_RANK_CANDIDATE'; payload?: { url?: string; title?: string } }
   | { type: 'REMOVE_RANK_CANDIDATE'; payload?: { id?: string } }
   | { type: 'REORDER_RANK_CANDIDATES'; payload?: { orderedIds?: string[] } }

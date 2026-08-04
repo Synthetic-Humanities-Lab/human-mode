@@ -11,6 +11,7 @@ import {
   normalizeTrackedUrl,
   rankCandidatesInNoteCaptureOrder
 } from '../shared';
+import { shouldBlockPdfNavigation } from './navigation';
 import { buildReadingPayload, ReadingPayload } from './reading';
 
 let currentSession: AgentSession | null = null;
@@ -22,6 +23,8 @@ void init();
 
 async function init(): Promise<void> {
   ensureRoot();
+  document.addEventListener('click', blockPdfNavigation, true);
+  document.addEventListener('auxclick', blockPdfNavigation, true);
   void notifyCurrentPage();
   window.addEventListener('pageshow', () => void notifyCurrentPage());
   window.addEventListener('focus', () => void notifyCurrentPage());
@@ -34,6 +37,24 @@ async function init(): Promise<void> {
   const response = await chrome.runtime.sendMessage({ type: 'GET_SESSION' } satisfies RuntimeMessage).catch(() => null) as RuntimeResponse | null;
   currentSession = response?.session || null;
   render();
+}
+
+function blockPdfNavigation(event: MouseEvent): void {
+  const target = event.target;
+  if (!(target instanceof Element)) return;
+  const link = target.closest<HTMLAnchorElement>('a[href]');
+  if (!link || !shouldBlockPdfNavigation(currentSession, link.href)) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+  event.stopImmediatePropagation();
+  void chrome.runtime.sendMessage({
+    type: 'BLOCK_PDF_NAVIGATION',
+    payload: {
+      url: link.href,
+      title: link.textContent?.trim() || link.title || ''
+    }
+  } satisfies RuntimeMessage).catch(() => undefined);
 }
 
 function ensureRoot(): void {

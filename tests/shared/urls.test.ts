@@ -3,6 +3,7 @@ import {
   buildGoogleSearchUrl,
   getSearchQueryFromUrl,
   isCandidatePage,
+  isPdfUrl,
   isRestrictedUrl,
   isSearchResultsUrl,
   normalizeTrackedUrl
@@ -23,6 +24,15 @@ describe('URL rules', () => {
   it('accepts ordinary public pages as candidate sources', () => {
     expect(isCandidatePage('https://example.com/article')).toBe(true);
     expect(isCandidatePage('https://www.google.com/search?q=test')).toBe(false);
+  });
+
+  it('detects direct PDF URLs without treating PDF-like query values as files', () => {
+    expect(isPdfUrl('https://example.com/report.pdf')).toBe(true);
+    expect(isPdfUrl('https://example.com/report.PDF?download=1#page=4')).toBe(true);
+    expect(isPdfUrl('https://example.com/report%2Epdf')).toBe(true);
+    expect(isPdfUrl('https://example.com/report.pdf/')).toBe(true);
+    expect(isPdfUrl('https://example.com/article?download=report.pdf')).toBe(false);
+    expect(isPdfUrl('not a url')).toBe(false);
   });
 
   it('builds Google search URLs for assigned tasks', () => {

@@ -172,5 +172,6 @@ export type RuntimeError =
   | 'NO_RANK_CANDIDATES'
   | 'NOT_IN_NOTE_CAPTURE'
   | 'OUT_OF_BUDGET'
+  | 'PDF_TOOL_UNAVAILABLE'
   | 'TASK_BANK_EMPTY'
   | 'UNKNOWN_MESSAGE';

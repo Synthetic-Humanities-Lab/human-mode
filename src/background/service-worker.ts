@@ -19,6 +19,7 @@ import {
   getTokenCostCents,
   hydrateSession,
   isCandidatePage,
+  isPdfUrl,
   isPublicWebUrl,
   isRestrictedUrl,
   isSearchEngineUrl,
@@ -50,6 +51,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 const pendingRedirects = new Map<number, string>();
 const pendingTabBounceTokens = new Map<number, string>();
+let navigationSyncQueue: Promise<void> = Promise.resolve();
+
+function enqueueNavigationSync<T>(operation: () => Promise<T>): Promise<T> {
+  const queued = navigationSyncQueue.then(operation);
+  navigationSyncQueue = queued.then(() => undefined, () => undefined);
+  return queued;
+}
 
 function isNewTabPage(url = ''): boolean {
   return url === 'chrome://newtab/' || url === 'edge://newtab/' || url === 'about:blank';
@@ -157,7 +165,7 @@ chrome.tabs.onCreated.addListener(async (tab) => {
   await bounceToTrackedTab(session, 'Blocked new tab and returned to tracked tab', tab.id, true);
 });
 
-chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => enqueueNavigationSync(async () => {
   if (!changeInfo.status && !changeInfo.url && !changeInfo.title) return;
   if (pendingRedirects.has(tabId)) return;
   const session = await getSession();
@@ -165,6 +173,20 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
   const nextUrl = changeInfo.url || tab.url || '';
   const nextTitle = tab.title || changeInfo.title || '';
+
+  if (
+    tab.active
+    && isPdfUrl(nextUrl)
+    && (session.phase === Phase.RETRIEVAL || session.phase === Phase.INSPECTION)
+  ) {
+    const returnUrl = session.navigationChain[session.navigationChain.length - 1] || session.activeUrl;
+    if (returnUrl && normalizeTrackedUrl(returnUrl) !== normalizeTrackedUrl(nextUrl)) {
+      await queueTabNavigation(tabId, returnUrl);
+    }
+    logTrace(session, TraceKind.BLOCKED_ACTION, `Blocked PDF navigation: ${getPageLabel(nextUrl)}`);
+    await persistAndBroadcastSession(session);
+    return;
+  }
 
   if (session.phase === Phase.NOTE_CAPTURE && session.noteCaptureLockedTabId === tabId) {
     if (
@@ -198,7 +220,7 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
       await syncActivePageFromTab(session, tabId, nextUrl, nextTitle);
     }
   }
-});
+}));
 
 chrome.webNavigation.onCommitted.addListener(async ({ tabId, url, transitionType, transitionQualifiers, frameId }) => {
   if (frameId !== 0) return;
@@ -263,6 +285,8 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
       return openNoteRevision(message.payload);
     case 'DELETE_NOTE_BLOCK':
       return deleteNoteBlock(message.payload);
+    case 'BLOCK_PDF_NAVIGATION':
+      return blockPdfNavigation(message.payload);
     case 'ADD_RANK_CANDIDATE':
       return addRankCandidate(message.payload);
     case 'REMOVE_RANK_CANDIDATE':
@@ -693,10 +717,27 @@ async function completeSession(): Promise<RuntimeResponse> {
   return { ok: true, session, export: exported };
 }
 
+async function blockPdfNavigation(payload: { url?: string; title?: string } = {}): Promise<RuntimeResponse> {
+  const session = await getSession();
+  const url = normalizeTrackedUrl(String(payload.url || '').trim());
+  if (!isPdfUrl(url)) return { ok: false, error: 'INVALID_CANDIDATE_PAGE', session };
+
+  if (
+    session.sessionState === SessionState.ACTIVE
+    && (session.phase === Phase.RETRIEVAL || session.phase === Phase.INSPECTION)
+  ) {
+    logTrace(session, TraceKind.BLOCKED_ACTION, `Blocked PDF navigation: ${payload.title || getPageLabel(url)}`);
+    await persistAndBroadcastSession(session);
+  }
+
+  return { ok: false, error: 'PDF_TOOL_UNAVAILABLE', session };
+}
+
 async function addRankCandidate(payload: { url?: string; title?: string } = {}): Promise<RuntimeResponse> {
   const session = await getSession();
   if (session.phase === Phase.NOTE_CAPTURE || session.candidateSetFinalized) return { ok: false, error: 'CANDIDATES_LOCKED', session };
   const url = normalizeTrackedUrl(String(payload.url || '').trim());
+  if (isPdfUrl(url)) return { ok: false, error: 'PDF_TOOL_UNAVAILABLE', session };
   if (!isCandidatePage(url)) return { ok: false, error: 'INVALID_CANDIDATE_PAGE', session };
   if (getCandidateIndex(session, url) !== -1) return { ok: false, error: 'DUPLICATE_RANK_CANDIDATE', session };
   const title = String(payload.title || '').trim() || getPageLabel(url);
@@ -759,18 +800,20 @@ async function updateContentStatus(
   payload: { tabId?: number; url?: string; title?: string } = {},
   sender: chrome.runtime.MessageSender
 ): Promise<RuntimeResponse> {
-  const session = await getSession();
-  const tabId = sender.tab?.id ?? payload.tabId ?? null;
-  if (!tabId) return { ok: true, session };
-  if (session.sessionState === SessionState.ACTIVE && session.activeTabId && tabId !== session.activeTabId) {
-    await bounceToTrackedTab(session, 'Blocked tab switch and returned to tracked tab', tabId, false);
+  return enqueueNavigationSync(async () => {
+    const session = await getSession();
+    const tabId = sender.tab?.id ?? payload.tabId ?? null;
+    if (!tabId) return { ok: true, session };
+    if (session.sessionState === SessionState.ACTIVE && session.activeTabId && tabId !== session.activeTabId) {
+      await bounceToTrackedTab(session, 'Blocked tab switch and returned to tracked tab', tabId, false);
+      return { ok: true, session };
+    }
+    session.activeTabId = tabId;
+    if (payload.url) session.activeUrl = payload.url;
+    if (payload.title) session.activeTitle = payload.title;
+    await persistSession(session);
     return { ok: true, session };
-  }
-  session.activeTabId = tabId;
-  if (payload.url) session.activeUrl = payload.url;
-  if (payload.title) session.activeTitle = payload.title;
-  await persistSession(session);
-  return { ok: true, session };
+  });
 }
 
 function isHydratedStorage(value: unknown): boolean {
