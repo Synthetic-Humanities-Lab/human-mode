@@ -1,3 +1,5 @@
+import { PDF_TOOL_UNAVAILABLE_MESSAGE } from '../shared';
+
 export interface OnboardingStep {
   type: 'induction' | 'dossier' | 'faq';
   eyebrow: string;
@@ -96,5 +98,6 @@ export const responseMessages: Record<string, string> = {
   NO_NEXT_NOTE_CAPTURE_SOURCE: 'You are already on the last ranked page.',
   MISSING_NOTE_FOR_RANKED_SOURCE: 'Commit at least one note for this ranked page before continuing.',
   MISSING_NOTES_FOR_ALL_RANKED_SOURCES: 'Commit at least one note for every ranked source before entering deliverable.',
-  EMPTY_NOTE: 'Add note text before committing.'
+  EMPTY_NOTE: 'Add note text before committing.',
+  PDF_TOOL_UNAVAILABLE: PDF_TOOL_UNAVAILABLE_MESSAGE
 };

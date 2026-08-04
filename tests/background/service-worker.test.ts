@@ -123,4 +123,135 @@ describe('background service worker', () => {
     expect(completed.export?.stats.notesCommitted).toBe(2);
   });
 
+  it('blocks PDF candidates without affecting ordinary HTML candidates', async () => {
+    const harness = createChromeMock({
+      tabs: [
+        {
+          id: 1,
+          url: 'https://example.com',
+          title: 'Example landing page',
+          active: true
+        }
+      ]
+    });
+    vi.stubGlobal('chrome', harness.chrome);
+
+    await import('../../src/background/service-worker');
+    const started = await dispatchRuntimeMessage(harness, { type: 'START_SESSION' }, { tab: { id: 1 } as chrome.tabs.Tab });
+    expect(started.ok).toBe(true);
+    const updatesBeforePdf = harness.updates.length;
+
+    const blockedPdf = await dispatchRuntimeMessage(harness, {
+      type: 'ADD_RANK_CANDIDATE',
+      payload: { url: 'https://example.com/research/report.PDF?download=1#page=4', title: 'Report' }
+    });
+    expect(blockedPdf).toMatchObject({ ok: false, error: 'PDF_TOOL_UNAVAILABLE' });
+    expect(blockedPdf.session?.rankCandidates).toHaveLength(0);
+    expect(harness.updates).toHaveLength(updatesBeforePdf);
+
+    const addedHtml = await dispatchRuntimeMessage(harness, {
+      type: 'ADD_RANK_CANDIDATE',
+      payload: { url: 'https://example.com/research/article', title: 'Article' }
+    });
+    expect(addedHtml.ok).toBe(true);
+    expect(addedHtml.session?.rankCandidates).toEqual([
+      expect.objectContaining({ url: 'https://example.com/research/article', title: 'Article' })
+    ]);
+  });
+
+  it('blocks PDF navigation before inspection without changing candidate or operation state', async () => {
+    const harness = createChromeMock({
+      tabs: [
+        {
+          id: 1,
+          url: 'https://example.com',
+          title: 'Example landing page',
+          active: true
+        }
+      ]
+    });
+    vi.stubGlobal('chrome', harness.chrome);
+
+    await import('../../src/background/service-worker');
+    const started = await dispatchRuntimeMessage(harness, { type: 'START_SESSION' }, { tab: { id: 1 } as chrome.tabs.Tab });
+    expect(started.ok).toBe(true);
+    await harness.events.webNavigationOnCommitted.trigger({
+      tabId: 1,
+      url: started.session?.activeUrl || '',
+      transitionType: 'generated',
+      transitionQualifiers: [],
+      frameId: 0
+    } as unknown as chrome.webNavigation.WebNavigationTransitionCallbackDetails);
+
+    const beforePdf = started.session;
+    const pdfUrl = 'https://example.com/research/report.pdf';
+    const blockedPdf = await dispatchRuntimeMessage(harness, {
+      type: 'BLOCK_PDF_NAVIGATION',
+      payload: { url: pdfUrl, title: 'Report' }
+    });
+
+    expect(blockedPdf).toMatchObject({ ok: false, error: 'PDF_TOOL_UNAVAILABLE' });
+    expect(blockedPdf.session?.phase).toBe(beforePdf?.phase);
+    expect(blockedPdf.session?.activeUrl).toBe(beforePdf?.activeUrl);
+    expect(blockedPdf.session?.navigationChain).toEqual(beforePdf?.navigationChain);
+    expect(blockedPdf.session?.operationsUsed).toBe(beforePdf?.operationsUsed);
+    expect(blockedPdf.session?.rankCandidates).toHaveLength(0);
+
+    await harness.events.tabsOnUpdated.trigger(
+      1,
+      { url: pdfUrl, status: 'loading' },
+      { id: 1, url: pdfUrl, title: 'Report', active: true } as chrome.tabs.Tab
+    );
+    expect(harness.updates.at(-1)?.updateProperties.url).toBe(beforePdf?.activeUrl);
+
+    const afterFallback = await dispatchRuntimeMessage(harness, { type: 'GET_SESSION' });
+    expect(afterFallback.session?.phase).toBe(beforePdf?.phase);
+    expect(afterFallback.session?.activeUrl).toBe(beforePdf?.activeUrl);
+    expect(afterFallback.session?.operationsUsed).toBe(beforePdf?.operationsUsed);
+    expect(afterFallback.session?.rankCandidates).toHaveLength(0);
+  });
+
+  it('serializes page updates with content status so inspection state is not overwritten', async () => {
+    const harness = createChromeMock({
+      tabs: [
+        {
+          id: 1,
+          url: 'https://example.com',
+          title: 'Example landing page',
+          active: true
+        }
+      ]
+    });
+    vi.stubGlobal('chrome', harness.chrome);
+
+    await import('../../src/background/service-worker');
+    const started = await dispatchRuntimeMessage(harness, { type: 'START_SESSION' }, { tab: { id: 1 } as chrome.tabs.Tab });
+    expect(started.ok).toBe(true);
+    await harness.events.webNavigationOnCommitted.trigger({
+      tabId: 1,
+      url: started.session?.activeUrl || '',
+      transitionType: 'generated',
+      transitionQualifiers: [],
+      frameId: 0
+    } as unknown as chrome.webNavigation.WebNavigationTransitionCallbackDetails);
+
+    const sourceUrl = 'https://example.com/incident-postmortem';
+    const sourceTitle = 'Incident Postmortem Guide';
+    const sourceTab = { id: 1, url: sourceUrl, title: sourceTitle, active: true } as chrome.tabs.Tab;
+    await Promise.all([
+      harness.events.tabsOnUpdated.trigger(1, { url: sourceUrl, status: 'loading' }, sourceTab),
+      dispatchRuntimeMessage(
+        harness,
+        { type: 'CONTENT_STATUS', payload: { url: sourceUrl, title: sourceTitle } },
+        { tab: sourceTab }
+      )
+    ]);
+
+    const afterNavigation = await dispatchRuntimeMessage(harness, { type: 'GET_SESSION' });
+    expect(afterNavigation.session?.phase).toBe(Phase.INSPECTION);
+    expect(afterNavigation.session?.activeUrl).toBe(sourceUrl);
+    expect(afterNavigation.session?.activeTitle).toBe(sourceTitle);
+    expect(afterNavigation.session?.operationsUsed).toBe((started.session?.operationsUsed || 0) + 1);
+  });
+
 });

@@ -7,6 +7,7 @@ import {
   DEFAULT_BUDGET_CENTS,
   escapeHtml,
   OPERATION_COST_CENTS,
+  PDF_TOOL_UNAVAILABLE_MESSAGE,
   Phase,
   pretty,
   RuntimeMessage,
@@ -14,6 +15,7 @@ import {
   SessionExport,
   SessionState,
   TOKEN_COST_CENTS_PER_TOKEN,
+  TraceKind,
   formatMoney,
   formatMoneyPrecise,
   getBudgetRemainingCents,
@@ -130,6 +132,27 @@ async function init(): Promise<void> {
   session = response?.session || null;
   syncUiState();
   render();
+}
+
+function renderPdfCapabilityNotice(candidateSession: AgentSession): void {
+  const latestTrace = candidateSession.trace[candidateSession.trace.length - 1];
+  const blockedPdf = latestTrace?.kind === TraceKind.BLOCKED_ACTION
+    && latestTrace.detail.startsWith('Blocked PDF navigation:');
+
+  if (!blockedPdf) {
+    if (els.sideToast.dataset.notice === 'pdf') {
+      delete els.sideToast.dataset.notice;
+      els.sideToast.textContent = '';
+      els.sideToast.classList.remove('visible', 'success', 'error');
+    }
+    return;
+  }
+
+  clearTimeout(sideToastTimer);
+  els.sideToast.dataset.notice = 'pdf';
+  els.sideToast.textContent = PDF_TOOL_UNAVAILABLE_MESSAGE;
+  els.sideToast.classList.remove('success');
+  els.sideToast.classList.add('visible', 'error');
 }
 
 function bindEvents(): void {
@@ -306,6 +329,7 @@ function render(): void {
   renderDeliverableNotes();
   renderTrace();
   renderOnboarding();
+  renderPdfCapabilityNotice(session);
 }
 
 function setBar(el: HTMLElement, ratio: number, warnThreshold: number): void {

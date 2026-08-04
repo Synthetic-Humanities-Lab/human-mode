@@ -66,6 +66,22 @@ export function isPublicWebUrl(url = ''): boolean {
   }
 }
 
+export function isPdfUrl(url = ''): boolean {
+  try {
+    const parsed = new URL(url);
+    if (!/^https?:$/.test(parsed.protocol)) return false;
+    let pathname = parsed.pathname;
+    try {
+      pathname = decodeURIComponent(pathname);
+    } catch {
+      // Preserve the encoded path when it contains malformed escape sequences.
+    }
+    return /\.pdf\/?$/i.test(pathname);
+  } catch {
+    return false;
+  }
+}
+
 export function normalizeTrackedUrl(url = ''): string {
   try {
     const parsed = new URL(url);
