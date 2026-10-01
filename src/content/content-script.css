@@ -4,7 +4,7 @@
   font-display: swap;
 }
 
-#human-mode-overlay-root {
+{
   position: fixed;
   inset: 0;
   z-index: 2147483646;
@@ -15,7 +15,7 @@
 }
 
 #human-mode-overlay-root,
-#human-mode-overlay-root * {
+* {
   box-sizing: border-box;
 }
 
@@ -508,7 +508,7 @@
   overflow: visible;
 }
 
-#human-mode-overlay-root .human-mode-deliverable-text {
+.human-mode-deliverable-text {
   display: block;
   line-height: 1.65;
   white-space: pre-wrap;
@@ -516,29 +516,29 @@
   word-break: break-word;
 }
 
-#human-mode-overlay-root ::-webkit-scrollbar {
+::-webkit-scrollbar {
   width: 12px;
   height: 12px;
 }
 
-#human-mode-overlay-root ::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: #eef3ef;
   border: 1px solid #d0dbd6;
 }
 
-#human-mode-overlay-root ::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #d4dfda, #bccbc5);
   border: 1px solid #aabcb5;
 }
 
-#human-mode-overlay-root ::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   background: linear-gradient(180deg, #c8d7d1, #b3c5be);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  #human-mode-overlay-root *,
-  #human-mode-overlay-root *::before,
-  #human-mode-overlay-root *::after {
+  *,
+  *::before,
+  *::after {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;

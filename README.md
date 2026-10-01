@@ -1,68 +1,43 @@
 # Human Mode
 
-Human Mode is a Chrome extension and research prototype for constrained, human-in-the-loop web research. It frames the player as a human operator routed into an agent-compatible workflow: a person carrying out retrieval, ranking, note capture, context management, and synthesis by hand inside the same step order an automated system would use.
+A Chrome extension for learning how research agents work by collecting sources, ranking evidence, taking notes, and writing a deliverable within a simulated budget and context window.
 
-## Motivation
+## Install
 
-The extension is motivated by three educational questions:
-
-- How can a browser workflow help users understand the sequence of steps a research agent performs behind the scenes?
-- What do retrieval, source triage, note retention, and synthesis feel like when a person has to carry them out directly?
-- Can users learn agent constraints such as context windows, budgets, and ordered evidence collection by moving through them manually?
-
-## System Design
-
-The extension is organized as four runtime surfaces:
-
-- `src/background/`: service-worker authority for session state, Chrome events, navigation constraints, storage, budget accounting, and runtime message routing.
-- `src/shared/`: typed session model, message contracts, URL rules, task bank, context calculations, and migration/hydration helpers.
-- `src/sidepanel/`: side-panel controls for session lifecycle, candidate management, note entry, draft export, trace review, and onboarding.
-- `src/content/`: page overlay for active-mode status, source ranking, note-capture reading mode, restricted-page warnings, and retained-note display.
-
-The built extension is generated into `dist/`.
-
-## Experimental Protocol
-
-1. Start a session from the side panel.
-2. Review the requester question and operator work order.
-3. Inspect search results and candidate pages.
-4. Add candidate sources from the side panel.
-5. Finalize the candidate set.
-6. Rank sources in the page overlay.
-7. Begin note capture.
-8. Commit at least one note for each ranked source.
-9. Enter deliverable mode and draft the output.
-10. Complete the session and export the deliverable or runtime JSON.
-
-## Data And Privacy Model
-
-Human Mode stores session state in `chrome.storage.local` under `humanModeSession`. It reads active-tab URL/title metadata, committed notes, draft text, requester-question metadata, work-order metadata, budget counters, and runtime trace events to support the user-facing workflow. The extension does not include analytics, does not call a developer-operated server, and does not transmit user data off-device.
-
-## Customizing The Task Bank
-
-Human Mode ships with a default task bank in `src/shared/task-bank.json`. To adapt the experience for a course, workshop, or research exercise, edit that file directly.
-
-Each task should include:
-
-- a requester question
-- an operator work order
-- a search query or search seed
-
-For best results, keep tasks short, researchable, and appropriate for source-backed synthesis.
-
-## Reproducibility
+Requires Chrome 120 or later, Node.js, and npm.
 
 ```bash
-npm install
+npm ci
 npm run build
 ```
 
-`npm run build` runs the full typecheck, test, and build sequence.
+The build runs type checking and tests, then writes the extension to `dist/`.
 
-Load the built extension:
+1. Open `chrome://extensions` and enable **Developer mode**.
+2. Choose **Load unpacked** and select `dist/`.
+3. Click the Human Mode extension icon to open the side panel.
 
-1. Open `chrome://extensions`.
-2. Enable Developer mode.
-3. Choose Load unpacked.
-4. Select the `dist/` directory.
-5. Click the Human Mode extension icon to open the side panel.
+## Usage
+
+1. Start a session and review the assigned question and work order.
+2. Collect sources, press **Done Adding Sources**, and rank them on the page.
+3. Commit a note for each ranked source, then write and commit your deliverable.
+4. End the session and export the deliverable or session record.
+
+Use **Tutorial** for a guided walkthrough.
+
+Each session starts with $10 in simulated money. Charged actions and newly committed context units cost $0.01 each. Adding 100 context units costs $1.00. One word counts as one context unit.
+
+## Custom requests
+
+Open **Settings** to add requester questions and operator work orders, or import JSON using **Download Template** as a starting point. Saved settings apply to the next session.
+
+The built-in requests are in [src/shared/task-bank.json](src/shared/task-bank.json).
+
+## Privacy
+
+Session data and settings are stored locally. The extension has no analytics or developer-operated server. Starting a session sends the initial search query to Google through normal browser navigation.
+
+## License
+
+[MIT](LICENSE)

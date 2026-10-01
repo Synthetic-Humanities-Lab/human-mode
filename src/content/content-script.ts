@@ -8,8 +8,7 @@ import {
   RuntimeResponse,
   SessionState,
   isRestrictedUrl,
-  normalizeTrackedUrl,
-  rankCandidatesInNoteCaptureOrder
+  normalizeTrackedUrl
 } from '../shared';
 import { shouldBlockPdfNavigation } from './navigation';
 import { buildReadingPayload, ReadingPayload } from './reading';
@@ -25,9 +24,6 @@ async function init(): Promise<void> {
   ensureRoot();
   document.addEventListener('click', blockPdfNavigation, true);
   document.addEventListener('auxclick', blockPdfNavigation, true);
-  void notifyCurrentPage();
-  window.addEventListener('pageshow', () => void notifyCurrentPage());
-  window.addEventListener('focus', () => void notifyCurrentPage());
   chrome.runtime.onMessage.addListener((message: BroadcastMessage) => {
     if (message?.type === 'SESSION_UPDATED') {
       currentSession = message.session;
@@ -81,12 +77,7 @@ function ensureRoot(): void {
   root = mount;
 }
 
-async function notifyCurrentPage(): Promise<void> {
-  await chrome.runtime.sendMessage({
-    type: 'CONTENT_STATUS',
-    payload: { url: location.href, title: document.title }
-  } satisfies RuntimeMessage).catch(() => undefined);
-}
+
 
 function render(): void {
   if (!root) return;
@@ -151,10 +142,7 @@ function createDeliverableNotesBoard(): HTMLElement {
   const notes = currentSession?.notes || [];
   board.innerHTML = `
     <div class="human-mode-deliverable-header">
-      <div class="human-mode-deliverable-header-top">
-        <div class="title">Retained Notes</div>
-      </div>
-      <div class="body">Retained notes stay visible while the draft is composed in the side panel.</div>
+      <div class="title">Retained Notes</div>
     </div>
     <div class="human-mode-deliverable-list"></div>
   `;
@@ -198,15 +186,12 @@ function createRankBoard(): HTMLElement {
 
   const board = document.createElement('div');
   board.className = 'human-mode-rank-board';
-  const orderedCandidates = currentSession ? rankCandidatesInNoteCaptureOrder(currentSession) : [];
+  const orderedCandidates = currentSession?.rankCandidates || [];
   board.innerHTML = `
     <div class="human-mode-rank-board-header">
-      <div class="human-mode-rank-board-header-top">
-        <div class="title">Rank Candidate Sources</div>
-      </div>
-      <div class="body">Drag these sources into the order you want, then begin note taking.</div>
+      <div class="title">Rank Candidate Sources</div>
+      <div class="body">Drag sources into order of relevance to the assigned task, then begin note taking.</div>
     </div>
-    <div class="human-mode-rank-arc" aria-hidden="true"></div>
     <div class="human-mode-rank-list-wrap">
       <div class="human-mode-rank-list"></div>
     </div>
@@ -278,11 +263,7 @@ function shouldShowRankBoard(): boolean {
 }
 
 function moveCandidate(sourceId: string, targetId: string): string[] | null {
-  const candidates = currentSession?.rankCandidates || [];
-  let orderedIds = [...(currentSession?.noteCaptureRankOrder || [])];
-  if (currentSession && orderedIds.length !== candidates.length) {
-    orderedIds = rankCandidatesInNoteCaptureOrder(currentSession).map(candidate => candidate.id);
-  }
+  const orderedIds = currentSession?.rankCandidates.map(candidate => candidate.id) || [];
   const sourceIndex = orderedIds.indexOf(sourceId);
   const targetIndex = orderedIds.indexOf(targetId);
   if (sourceIndex === -1 || targetIndex === -1 || sourceIndex === targetIndex) return null;

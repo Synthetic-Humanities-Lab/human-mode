@@ -1122,3 +1122,6 @@ body[data-section-tour] .app { padding-bottom:var(--tour-guide-height,300px); }
 }
 .feature-help strong { display:block; font-weight:600; font-size:15px; line-height:1.3 }
 .feature-help p { margin:8px 0 0; color:#515154 }
+
+dialog.onboarding-card:not([open]) { display:none }
+body:has(dialog[open]) { overflow:hidden }

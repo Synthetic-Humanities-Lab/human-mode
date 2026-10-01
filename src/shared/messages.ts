@@ -1,5 +1,5 @@
-import { TaskBankSettings } from './task-bank';
 import { AgentSession, SessionExport } from './types';
+import { TaskBankSettings } from './task-bank';
 
 export const PDF_TOOL_UNAVAILABLE_MESSAGE = 'You do not have access to the PDF tool.';
 
@@ -8,7 +8,7 @@ export type RuntimeMessage =
   | { type: 'GET_TASK_BANK_SETTINGS' }
   | { type: 'SAVE_TASK_BANK_SETTINGS'; payload: TaskBankSettings }
   | { type: 'START_SESSION' }
-  | { type: 'BEGIN_NOTE_CAPTURE'; payload?: { tabId?: number; url?: string; title?: string } }
+  | { type: 'BEGIN_NOTE_CAPTURE' }
   | { type: 'NEXT_NOTE_CAPTURE_SOURCE' }
   | { type: 'COMMIT_NOTE_BLOCK'; payload?: { id?: string; committedText?: string; sourceUrl?: string; sourceTitle?: string } }
   | { type: 'OPEN_NOTE_REVISION'; payload?: { id?: string } }
@@ -24,8 +24,7 @@ export type RuntimeMessage =
   | { type: 'RESUME_SESSION' }
   | { type: 'ABORT_SESSION' }
   | { type: 'COMPLETE_SESSION' }
-  | { type: 'EXPAND_CONTEXT' }
-  | { type: 'CONTENT_STATUS'; payload?: { tabId?: number; url?: string; title?: string } };
+  | { type: 'EXPAND_CONTEXT' };
 
 export type BroadcastMessage =
   | { type: 'SESSION_UPDATED'; session: AgentSession }
@@ -36,6 +35,5 @@ export type RuntimeResponse = {
   error?: string;
   session?: AgentSession;
   export?: SessionExport;
-  noteId?: string;
   settings?: TaskBankSettings;
 };

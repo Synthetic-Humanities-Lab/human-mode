@@ -4,9 +4,7 @@ export interface OnboardingStep {
   type: 'induction' | 'dossier' | 'faq';
   eyebrow: string;
   title: string;
-  body?: string;
   bodyHtml?: string;
-  support?: string;
   flow?: Array<{ label: string; copy: string }>;
   faqQuestion?: string;
   faqAnswer?: string;
@@ -45,7 +43,7 @@ export const onboardingSteps: OnboardingStep[] = [
     eyebrow: 'OPERATOR FAQ',
     title: 'FAQ 01: Receive Request',
     faqQuestion: 'WHY ARE THERE TWO VERSIONS OF THE TASK?',
-    faqAnswer: 'When an agent receives a human request, it does not search the raw wording directly. A planning step converts the request into a narrower objective, search seed, or work order. The requester question tells you what the human wants. The operator work order tells you what the system needs you to do. Intent becomes operation via formatting.'
+    faqAnswer: 'The requester question defines what to answer. The operator work order sets the scope of the research.'
   },
   {
     type: 'faq',
@@ -102,11 +100,7 @@ export const responseMessages: Record<string, string> = {
   PDF_TOOL_UNAVAILABLE: PDF_TOOL_UNAVAILABLE_MESSAGE
 };
 
-export const tutorialTask = {
-  requesterQuestion: 'How can a small museum preserve its audio recordings?',
-  workOrder: 'Compare practical approaches to preserving recordings and recommend priorities for a small museum'
-};
-
+// Explanations and tutorial copy live here so they can be edited together.
 export const featureHelp: Record<string, { title: string; body: string }> = {
   request: { title: 'Question and work order', body: 'The question defines what to answer. The work order sets the scope of your research.' },
   sources: { title: 'Choosing sources', body: 'Choose pages with relevant evidence. PDFs are unavailable in this exercise.' },
@@ -119,6 +113,12 @@ export const featureHelp: Record<string, { title: string; body: string }> = {
   export: { title: 'Downloads', body: 'Deliverable saves your answer as a Word-compatible document. Runtime JSON saves the session record, including actions and costs.' },
   settings: { title: 'Your task bank', body: 'Add or import questions and work orders. New sessions use your selected task bank.' },
 };
+
+export const tutorialTask = {
+  requesterQuestion: 'How can a small museum preserve its audio recordings?',
+  workOrder: 'Compare practical approaches to preserving recordings and recommend priorities for a small museum'
+};
+
 export const tutorialSources = [
   { title: 'A guide to preserving sound recordings', host: 'Archive guidance', evidence: 'Preserve an uncompressed master, keep copies in separate locations, and document the recording’s format and history.' },
   { title: 'Choosing playback equipment', host: 'Equipment guide', evidence: 'Use equipment suitable for the original recording format and test playback before digitizing fragile recordings.' }

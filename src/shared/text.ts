@@ -21,7 +21,3 @@ export function normalizeText(text = ''): string {
     .replace(/[ \t]{2,}/g, ' ')
     .trim();
 }
-
-export function countWords(text = ''): number {
-  return String(text).trim().split(/\s+/).filter(Boolean).length;
-}

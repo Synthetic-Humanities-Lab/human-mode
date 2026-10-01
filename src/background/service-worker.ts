@@ -1,4 +1,3 @@
-import { TaskBankSettings, TASK_BANK_SETTINGS_KEY, TASK_BANK, parseTaskBankSettings } from '../shared';
 import {
   AgentSession,
   CONTEXT_EXPANSION_COST_CENTS,
@@ -11,14 +10,17 @@ import {
   STORAGE_KEY,
   SessionState,
   TraceKind,
+  TaskBankSettings,
+  TASK_BANK_SETTINGS_KEY,
+  TASK_BANK,
   buildGoogleSearchUrl,
   createEmptySession,
   getContextBreakdown,
-  getOperationsMax,
   getPageLabel,
   getSearchQueryFromUrl,
   getTokenCostCents,
   hydrateSession,
+  hasCommittedNoteForSource,
   isCandidatePage,
   isPdfUrl,
   isPublicWebUrl,
@@ -27,12 +29,9 @@ import {
   isSearchResultsUrl,
   makeId,
   makeSessionExport,
-  moneyFromCents,
   normalizeTrackedUrl,
-  now,
+  parseTaskBankSettings,
   pickRandomTask,
-  rankCandidatesInNoteCaptureOrder,
-  reconcileNoteCaptureRankOrder,
   roughTokenCount,
   roundCents
 } from '../shared';
@@ -54,6 +53,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 const pendingRedirects = new Map<number, string>();
 const pendingTabBounceTokens = new Map<number, string>();
+// ponytail: one tracked session, so serialize its tab updates with a single queue.
 let navigationSyncQueue: Promise<void> = Promise.resolve();
 
 function enqueueNavigationSync<T>(operation: () => Promise<T>): Promise<T> {
@@ -286,7 +286,7 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
     case 'START_SESSION':
       return startSession(sender);
     case 'BEGIN_NOTE_CAPTURE':
-      return beginNoteCapture(message.payload, sender);
+      return beginNoteCapture(sender);
     case 'NEXT_NOTE_CAPTURE_SOURCE':
       return nextNoteCaptureSource();
     case 'COMMIT_NOTE_BLOCK':
@@ -314,13 +314,11 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
     case 'RESUME_SESSION':
       return resumeSession();
     case 'ABORT_SESSION':
-      return abortSession();
+      return finishSession(SessionState.ABORTED, TraceKind.SESSION_ABORT, 'Session aborted');
     case 'COMPLETE_SESSION':
-      return completeSession();
+      return finishSession(SessionState.COMPLETED, TraceKind.SESSION_COMPLETE, 'Session completed');
     case 'EXPAND_CONTEXT':
       return expandContext();
-    case 'CONTENT_STATUS':
-      return updateContentStatus(message.payload, sender);
     default:
       return { ok: false, error: 'UNKNOWN_MESSAGE' };
   }
@@ -341,6 +339,13 @@ async function readStoredSessionRecord(): Promise<unknown> {
   return hydratedLegacy;
 }
 
+async function getTaskBankSettings(): Promise<TaskBankSettings> {
+  const stored = await chrome.storage.local.get(TASK_BANK_SETTINGS_KEY);
+  return stored[TASK_BANK_SETTINGS_KEY] === undefined
+    ? { useCustomTasks: false, tasks: [] }
+    : parseTaskBankSettings(stored[TASK_BANK_SETTINGS_KEY]);
+}
+
 async function getSession(): Promise<AgentSession> {
   const raw = await readStoredSessionRecord();
   const session = hydrateSession(raw);
@@ -352,22 +357,21 @@ async function getSession(): Promise<AgentSession> {
 
 async function persistSession(session: AgentSession): Promise<void> {
   const hydrated = hydrateSession(session);
-  hydrated.estimatedSpend = moneyFromCents(hydrated.spendCents);
-  hydrated.operationsMax = getOperationsMax(hydrated);
-  hydrated.lastUpdatedAt = now();
   await chrome.storage.local.set({ [STORAGE_KEY]: hydrated });
 }
 
 function logTrace(session: AgentSession, kind: TraceKind, detail: string): void {
-  session.trace.push({ id: makeId('trace'), at: now(), kind, detail, phase: session.phase });
+  session.trace.push({
+    id: makeId('trace'),
+    at: Date.now(),
+    kind,
+    detail,
+    phase: session.phase
+  });
 }
 
 function canSpend(session: AgentSession, cents: number): boolean {
   return roundCents(session.spendCents + cents) <= session.budgetCents;
-}
-
-function getTokenOperationCostCents(..._texts: string[]): number {
-  return OPERATION_COST_CENTS;
 }
 
 function getContextTokenCostCents(nextTokens: number, originalTokens = 0): number {
@@ -390,19 +394,6 @@ function spendOperation(
   if (!canSpend(session, cents)) return { ok: false, error: 'OUT_OF_BUDGET', session };
   session.operationsUsed += 1;
   session.spendCents = roundCents(session.spendCents + cents);
-  logTrace(session, kind, detail);
-  return { ok: true, session };
-}
-
-function spendContext(
-  session: AgentSession,
-  kind: TraceKind,
-  detail: string,
-  cents = CONTEXT_EXPANSION_COST_CENTS
-): RuntimeResponse {
-  if (!canSpend(session, cents)) return { ok: false, error: 'OUT_OF_BUDGET', session };
-  session.spendCents = roundCents(session.spendCents + cents);
-  session.contextExpansionSpendCents = roundCents(session.contextExpansionSpendCents + cents);
   logTrace(session, kind, detail);
   return { ok: true, session };
 }
@@ -512,28 +503,23 @@ async function syncActivePageFromTab(session: AgentSession, tabId: number, url: 
   await persistAndBroadcastSession(session);
 }
 
-async function beginNoteCapture(
-  payload: { tabId?: number; url?: string; title?: string } = {},
-  sender: chrome.runtime.MessageSender
-): Promise<RuntimeResponse> {
+async function beginNoteCapture(sender: chrome.runtime.MessageSender): Promise<RuntimeResponse> {
   const session = await getSession();
   if (!session.rankCandidates.length) return { ok: false, error: 'NO_RANK_CANDIDATES', session };
   if (!session.candidateSetFinalized) return { ok: false, error: 'CANDIDATE_SET_NOT_FINALIZED', session };
-  const activeTabs = payload.tabId
-    ? [await chrome.tabs.get(payload.tabId).catch(() => null)]
-    : await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []);
+  const activeTabs = await chrome.tabs.query({ active: true, currentWindow: true }).catch(() => []);
   const activeTab = activeTabs[0] || null;
-  const ordered = rankCandidatesInNoteCaptureOrder(session);
+  const ordered = session.rankCandidates;
   const target = ordered[0];
   if (!target) return { ok: false, error: 'NO_RANK_CANDIDATES', session };
   const tabId = activeTab?.id ?? sender.tab?.id ?? session.activeTabId ?? null;
-  const currentUrl = String(payload.url || activeTab?.url || session.activeUrl || '');
+  const currentUrl = String(activeTab?.url || session.activeUrl || '');
   session.phase = Phase.NOTE_CAPTURE;
   session.noteCaptureQueueIndex = 0;
   session.noteCaptureLockedTabId = tabId;
   session.noteCaptureLockedUrl = target.url;
   session.activeUrl = target.url;
-  session.activeTitle = target.title || String(payload.title || activeTab?.title || session.activeTitle || '');
+  session.activeTitle = target.title || String(activeTab?.title || session.activeTitle || '');
   session.lastTrackedNavigationUrl = target.url;
   logTrace(session, TraceKind.BEGIN_NOTE_CAPTURE, `Begin note capture: ${session.activeTitle || getPageLabel(session.noteCaptureLockedUrl)}`);
   pushNavigation(session, target.url);
@@ -560,7 +546,7 @@ async function commitNoteBlock(payload: { id?: string; committedText?: string; s
   const projected = currentBreakdown.total - originalTokens + nextTokens;
   if (projected > session.contextMax) return { ok: false, error: 'CONTEXT_FULL', session };
 
-  const noteCommitCostCents = getTokenOperationCostCents(committedText);
+  const noteCommitCostCents = OPERATION_COST_CENTS;
   const noteContextCostCents = getContextTokenCostCents(nextTokens, originalTokens);
   if (!canSpend(session, roundCents(noteCommitCostCents + noteContextCostCents))) {
     return { ok: false, error: 'OUT_OF_BUDGET', session };
@@ -578,20 +564,12 @@ async function commitNoteBlock(payload: { id?: string; committedText?: string; s
     existing.committedText = committedText;
     existing.sourceUrl = sourceUrl;
     existing.sourceTitle = sourceTitle;
-    existing.updatedAt = now();
   } else {
-    session.notes.push({ id: noteId, sourceUrl, sourceTitle, committedText, updatedAt: now() });
+    session.notes.push({ id: noteId, sourceUrl, sourceTitle, committedText });
   }
 
   await persistAndBroadcastSession(session);
-  return { ok: true, session, noteId };
-}
-
-function hasCommittedNoteForCandidate(session: AgentSession, candidate: { url?: string } | undefined): boolean {
-  if (!candidate?.url) return false;
-  const targetUrl = normalizeTrackedUrl(candidate.url);
-  if (!targetUrl) return false;
-  return (session.notes || []).some(note => normalizeTrackedUrl(note.sourceUrl || '') === targetUrl);
+  return { ok: true, session };
 }
 
 async function nextNoteCaptureSource(): Promise<RuntimeResponse> {
@@ -601,9 +579,9 @@ async function nextNoteCaptureSource(): Promise<RuntimeResponse> {
   if (typeof queueIndex !== 'number' || !Number.isInteger(queueIndex)) {
     return { ok: false, error: 'NO_NEXT_NOTE_CAPTURE_SOURCE', session };
   }
-  const ordered = rankCandidatesInNoteCaptureOrder(session);
+  const ordered = session.rankCandidates;
   const currentCandidate = ordered[queueIndex];
-  if (!hasCommittedNoteForCandidate(session, currentCandidate)) {
+  if (!hasCommittedNoteForSource(session, currentCandidate?.url)) {
     return { ok: false, error: 'MISSING_NOTE_FOR_RANKED_SOURCE', session };
   }
   if (queueIndex >= ordered.length - 1) {
@@ -644,8 +622,8 @@ async function enterDeliverable(): Promise<RuntimeResponse> {
   const session = await getSession();
   if (!session.rankCandidates.length) return { ok: false, error: 'NO_RANK_CANDIDATES', session };
   if (!session.candidateSetFinalized) return { ok: false, error: 'CANDIDATE_SET_NOT_FINALIZED', session };
-  const ordered = rankCandidatesInNoteCaptureOrder(session);
-  const missingCoverage = ordered.some(candidate => !hasCommittedNoteForCandidate(session, candidate));
+  const ordered = session.rankCandidates;
+  const missingCoverage = ordered.some(candidate => !hasCommittedNoteForSource(session, candidate.url));
   if (missingCoverage) return { ok: false, error: 'MISSING_NOTES_FOR_ALL_RANKED_SOURCES', session };
   const spent = spendOperation(session, TraceKind.DRAFT_PHASE_ENTER, 'Entered deliverable phase');
   if (!spent.ok) return spent;
@@ -663,16 +641,20 @@ async function commitDraft(payload: { committedText?: string } = {}): Promise<Ru
   const nextTokens = roughTokenCount(committedText);
   const projected = currentBreakdown.total - originalTokens + nextTokens;
   if (projected > session.contextMax) return { ok: false, error: 'CONTEXT_FULL', session };
-  const draftCommitCostCents = getTokenOperationCostCents(committedText);
+  const draftCommitCostCents = OPERATION_COST_CENTS;
   const draftContextCostCents = getContextTokenCostCents(nextTokens, originalTokens);
   if (!canSpend(session, roundCents(draftCommitCostCents + draftContextCostCents))) {
     return { ok: false, error: 'OUT_OF_BUDGET', session };
   }
   applyContextSpend(session, draftContextCostCents);
-  const wordCount = committedText.split(/\s+/).filter(Boolean).length;
-  const spent = spendOperation(session, TraceKind.DRAFT_COMMIT, `Committed draft update (${wordCount} words, ${nextTokens} tokens)`, draftCommitCostCents);
+  const spent = spendOperation(
+    session,
+    TraceKind.DRAFT_COMMIT,
+    `Committed draft update (${nextTokens} words, ${nextTokens} tokens)`,
+    draftCommitCostCents
+  );
   if (!spent.ok) return spent;
-  session.draft = { committedText, updatedAt: now() };
+  session.draft = { committedText };
   await persistAndBroadcastSession(session);
   return { ok: true, session };
 }
@@ -697,29 +679,20 @@ async function resumeSession(): Promise<RuntimeResponse> {
 
 async function expandContext(): Promise<RuntimeResponse> {
   const session = await getSession();
-  const spent = spendContext(session, TraceKind.CONTEXT_EXPANSION, `Expanded context window by ${CONTEXT_EXPANSION_TOKENS} tokens`);
-  if (!spent.ok) return spent;
+  if (!canSpend(session, CONTEXT_EXPANSION_COST_CENTS)) return { ok: false, error: 'OUT_OF_BUDGET', session };
+  applyContextSpend(session, CONTEXT_EXPANSION_COST_CENTS);
+  logTrace(session, TraceKind.CONTEXT_EXPANSION, `Expanded context window by ${CONTEXT_EXPANSION_TOKENS} tokens`);
   session.contextMax += CONTEXT_EXPANSION_TOKENS;
   await persistAndBroadcastSession(session);
   return { ok: true, session };
 }
 
-async function abortSession(): Promise<RuntimeResponse> {
+async function finishSession(outcome: SessionState, kind: TraceKind, detail: string): Promise<RuntimeResponse> {
   const session = await getSession();
-  session.sessionState = SessionState.ABORTED;
+  session.sessionState = outcome;
   clearNoteCaptureState(session);
-  logTrace(session, TraceKind.SESSION_ABORT, 'Session aborted');
-  const exported = makeSessionExport(session, SessionState.ABORTED);
-  await persistAndBroadcastSession(session);
-  return { ok: true, session, export: exported };
-}
-
-async function completeSession(): Promise<RuntimeResponse> {
-  const session = await getSession();
-  session.sessionState = SessionState.COMPLETED;
-  clearNoteCaptureState(session);
-  logTrace(session, TraceKind.SESSION_COMPLETE, 'Session completed');
-  const exported = makeSessionExport(session, SessionState.COMPLETED);
+  logTrace(session, kind, detail);
+  const exported = makeSessionExport(session, outcome);
   await persistAndBroadcastSession(session);
   return { ok: true, session, export: exported };
 }
@@ -750,8 +723,6 @@ async function addRankCandidate(payload: { url?: string; title?: string } = {}):
   const title = String(payload.title || '').trim() || getPageLabel(url);
   const candidate = { id: makeId('candidate'), url, title };
   session.rankCandidates.push(candidate);
-  if (!Array.isArray(session.noteCaptureRankOrder)) session.noteCaptureRankOrder = [];
-  session.noteCaptureRankOrder.push(candidate.id);
   const searchEngineUrl = (session.navigationChain || []).find(item => isSearchEngineUrl(item) || isSearchResultsUrl(item))
     || session.navigationChain?.[0]
     || '';
@@ -768,7 +739,6 @@ async function removeRankCandidate(payload: { id?: string } = {}): Promise<Runti
   if (session.phase === Phase.NOTE_CAPTURE) return { ok: false, error: 'CANDIDATES_LOCKED', session };
   const candidate = session.rankCandidates.find(item => item.id === payload.id);
   session.rankCandidates = session.rankCandidates.filter(item => item.id !== payload.id);
-  session.noteCaptureRankOrder = (session.noteCaptureRankOrder || []).filter(id => id !== payload.id);
   if (!session.rankCandidates.length) session.candidateSetFinalized = false;
   logTrace(session, TraceKind.RANK_CANDIDATE_REMOVE, `Removed ranked candidate: ${candidate?.title || payload.id || 'unknown page'}`);
   await persistAndBroadcastSession(session);
@@ -780,14 +750,14 @@ async function reorderRankCandidates(payload: { orderedIds?: string[] } = {}): P
   if (session.phase === Phase.NOTE_CAPTURE || !session.candidateSetFinalized) return { ok: false, error: 'CANDIDATES_LOCKED', session };
   const orderedIds = Array.isArray(payload.orderedIds) ? payload.orderedIds : [];
   const byId = new Map(session.rankCandidates.map(candidate => [candidate.id, candidate]));
-  const reordered = orderedIds.map(id => byId.get(id)).filter(Boolean);
-  if (reordered.length !== session.rankCandidates.length) {
-    for (const candidate of session.rankCandidates) {
-      if (!reordered.find(item => item?.id === candidate.id)) reordered.push(candidate);
-    }
+  const reordered = orderedIds
+    .map(id => byId.get(id))
+    .filter((candidate): candidate is AgentSession['rankCandidates'][number] => Boolean(candidate));
+  for (const candidate of session.rankCandidates) {
+    if (!reordered.some(item => item.id === candidate.id)) reordered.push(candidate);
   }
-  session.noteCaptureRankOrder = reordered.map(candidate => candidate?.id || '').filter(Boolean);
-  logTrace(session, TraceKind.RANK_CANDIDATE_REORDER, `Reordered note capture order (${session.noteCaptureRankOrder.length} total)`);
+  session.rankCandidates = reordered;
+  logTrace(session, TraceKind.RANK_CANDIDATE_REORDER, `Reordered note capture order (${session.rankCandidates.length} total)`);
   await persistAndBroadcastSession(session);
   return { ok: true, session };
 }
@@ -796,7 +766,6 @@ async function finalizeRankCandidates(): Promise<RuntimeResponse> {
   const session = await getSession();
   if (session.phase === Phase.NOTE_CAPTURE) return { ok: false, error: 'CANDIDATES_LOCKED', session };
   if (!session.rankCandidates.length) return { ok: false, error: 'NO_RANK_CANDIDATES', session };
-  reconcileNoteCaptureRankOrder(session);
   session.candidateSetFinalized = true;
   session.phase = Phase.INSPECTION;
   logTrace(session, TraceKind.RANK_CANDIDATE_FINALIZE, `Finalized candidate set (${session.rankCandidates.length} total)`);
@@ -804,33 +773,6 @@ async function finalizeRankCandidates(): Promise<RuntimeResponse> {
   return { ok: true, session };
 }
 
-async function updateContentStatus(
-  payload: { tabId?: number; url?: string; title?: string } = {},
-  sender: chrome.runtime.MessageSender
-): Promise<RuntimeResponse> {
-  return enqueueNavigationSync(async () => {
-    const session = await getSession();
-    const tabId = sender.tab?.id ?? payload.tabId ?? null;
-    if (!tabId) return { ok: true, session };
-    if (session.sessionState === SessionState.ACTIVE && session.activeTabId && tabId !== session.activeTabId) {
-      await bounceToTrackedTab(session, 'Blocked tab switch and returned to tracked tab', tabId, false);
-      return { ok: true, session };
-    }
-    session.activeTabId = tabId;
-    if (payload.url) session.activeUrl = payload.url;
-    if (payload.title) session.activeTitle = payload.title;
-    await persistSession(session);
-    return { ok: true, session };
-  });
-}
-
 function isHydratedStorage(value: unknown): boolean {
   return typeof value === 'object' && value !== null && 'sessionRunId' in value && 'draft' in value;
-}
-
-async function getTaskBankSettings(): Promise<TaskBankSettings> {
-  const stored = await chrome.storage.local.get(TASK_BANK_SETTINGS_KEY);
-  return stored[TASK_BANK_SETTINGS_KEY] === undefined
-    ? { useCustomTasks: false, tasks: [] }
-    : parseTaskBankSettings(stored[TASK_BANK_SETTINGS_KEY]);
 }

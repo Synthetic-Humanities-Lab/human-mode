@@ -1,13 +1,10 @@
-import { initGuidance } from './guidance';
+import { DEFAULT_BUDGET_CENTS, OPERATION_COST_CENTS, TOKEN_COST_CENTS_PER_TOKEN, getOperationsMax } from '../shared';
 import {
   AgentSession,
   BroadcastMessage,
-  countWords,
   CONTEXT_EXPANSION_TOKENS,
   CONTEXT_WARNING_THRESHOLD,
-  DEFAULT_BUDGET_CENTS,
   escapeHtml,
-  OPERATION_COST_CENTS,
   PDF_TOOL_UNAVAILABLE_MESSAGE,
   Phase,
   pretty,
@@ -15,30 +12,27 @@ import {
   RuntimeResponse,
   SessionExport,
   SessionState,
-  TOKEN_COST_CENTS_PER_TOKEN,
   TraceKind,
   formatMoney,
-  formatMoneyPrecise,
   getBudgetRemainingCents,
   getContextBreakdownFromParts,
   getTaskContextText,
-  getOperationsMax,
+  hasCommittedNoteForSource,
   isCandidatePage,
   makeId,
+  NoteBlock,
   normalizeTrackedUrl,
-  rankCandidatesInNoteCaptureOrder,
   roughTokenCount
 } from '../shared';
 import { LEGACY_ONBOARDING_STORAGE_KEY, ONBOARDING_STORAGE_KEY, OnboardingStep, onboardingSteps, responseMessages } from './copy';
 import { downloadDeliverableFile, downloadSessionExportFile, renderExportSummary } from './export';
+import { initGuidance } from './guidance';
 
 interface NoteUiState {
   id: string;
-  editing: boolean;
   draftText: string;
   sourceUrl: string;
   sourceTitle: string;
-  committedText?: string;
 }
 
 let session: AgentSession | null = null;
@@ -50,20 +44,18 @@ let lastSessionRunId = '';
 const retiredSessionRunIds = new Set<string>();
 let sideToastTimer = 0;
 let onboardingStepIndex = 0;
-let onboardingVisible = false;
 
 const els = {
   appRoot: byId<HTMLElement>('appRoot'),
   modeBadge: byId<HTMLElement>('modeBadge'),
   openOnboardingBtn: byId<HTMLButtonElement>('openOnboardingBtn'),
   openFaqBtn: byId<HTMLButtonElement>('openFaqBtn'),
-  onboardingSection: byId<HTMLElement>('onboardingSection'),
+  onboardingSection: byId<HTMLDialogElement>('onboardingSection'),
   onboardingEyebrow: byId<HTMLElement>('onboardingEyebrow'),
   onboardingTitle: byId<HTMLElement>('onboardingTitle'),
   onboardingStepMeta: byId<HTMLElement>('onboardingStepMeta'),
   onboardingInduction: byId<HTMLElement>('onboardingInduction'),
   onboardingBody: byId<HTMLElement>('onboardingBody'),
-  onboardingSupport: byId<HTMLElement>('onboardingSupport'),
   onboardingDossier: byId<HTMLElement>('onboardingDossier'),
   onboardingPrevBtn: byId<HTMLButtonElement>('onboardingPrevBtn'),
   onboardingFaqBtn: byId<HTMLButtonElement>('onboardingFaqBtn'),
@@ -81,18 +73,22 @@ const els = {
   operationsMeta: byId<HTMLElement>('operationsMeta'),
   budgetSpent: byId<HTMLElement>('budgetSpent'),
   budgetTotal: byId<HTMLElement>('budgetTotal'),
+  budgetDisplay: byId<HTMLElement>('budgetDisplay'),
   budgetFill: byId<HTMLElement>('budgetFill'),
   budgetMeta: byId<HTMLElement>('budgetMeta'),
+  assignedTaskSection: byId<HTMLElement>('assignedTaskSection'),
+  candidateSection: byId<HTMLElement>('candidateSection'),
+  notesSection: byId<HTMLElement>('notesSection'),
+  traceSection: byId<HTMLElement>('traceSection'),
   requesterQuestionDisplay: byId<HTMLElement>('requesterQuestionDisplay'),
   workOrderDisplay: byId<HTMLElement>('workOrderDisplay'),
-  budgetDisplay: byId<HTMLElement>('budgetDisplay'),
   rankCandidatesList: byId<HTMLElement>('rankCandidatesList'),
   addRankCandidateBtn: byId<HTMLButtonElement>('addRankCandidateBtn'),
   finalizeRankCandidatesBtn: byId<HTMLButtonElement>('finalizeRankCandidatesBtn'),
   rankedPagesSection: byId<HTMLElement>('rankedPagesSection'),
   rankedPagesList: byId<HTMLElement>('rankedPagesList'),
-  noteCaptureQueueMeta: byId<HTMLElement>('noteCaptureQueueMeta'),
   notesList: byId<HTMLElement>('notesList'),
+  notesProgress: byId<HTMLElement>('notesProgress'),
   noteTemplate: byId<HTMLTemplateElement>('noteTemplate'),
   draftInput: byId<HTMLTextAreaElement>('draftInput'),
   traceList: byId<HTMLElement>('traceList'),
@@ -103,7 +99,6 @@ const els = {
   abortSessionBtn: byId<HTMLButtonElement>('abortSessionBtn'),
   expandContextBtn: byId<HTMLButtonElement>('expandContextBtn'),
   endSessionBtn: byId<HTMLButtonElement>('endSessionBtn'),
-  beginNoteCaptureBtn: byId<HTMLButtonElement>('beginNoteCaptureBtn'),
   newNoteBtn: byId<HTMLButtonElement>('newNoteBtn'),
   nextRankedPageBtn: byId<HTMLButtonElement>('nextRankedPageBtn'),
   enterDeliverableBtn: byId<HTMLButtonElement>('enterDeliverableBtn'),
@@ -119,7 +114,7 @@ void init();
 async function init(): Promise<void> {
   bindEvents();
   initOnboarding();
-  initGuidance(() => { if (onboardingVisible) dismissOnboarding(); }, showSideToast, () => {
+  initGuidance(() => { if (els.onboardingSection.open) dismissOnboarding(); }, showSideToast, () => {
     if (deferredSession) { const next = deferredSession; deferredSession = null; adoptSession(next); }
   });
   chrome.runtime.onMessage.addListener((message: BroadcastMessage) => {
@@ -134,6 +129,14 @@ async function init(): Promise<void> {
 
   const response = await sendMessage({ type: 'GET_SESSION' });
   adoptSession(response?.session || null);
+}
+
+function adoptSession(next: AgentSession | null): void {
+  if (!next || retiredSessionRunIds.has(next.sessionRunId)) return;
+  if (document.body.dataset.sectionTour) { deferredSession = next; return; }
+  session = next;
+  syncUiState();
+  render();
 }
 
 function renderPdfCapabilityNotice(candidateSession: AgentSession): void {
@@ -178,6 +181,10 @@ function bindEvents(): void {
     renderOnboarding();
   });
   els.dismissOnboardingBtn.addEventListener('click', dismissOnboarding);
+  els.onboardingSection.addEventListener('cancel', event => {
+    event.preventDefault();
+    dismissOnboarding();
+  });
   els.startSessionBtn.addEventListener('click', async () => {
     const response = await sendMessage({ type: 'START_SESSION' });
     handleResponse(response);
@@ -202,21 +209,12 @@ function bindEvents(): void {
     handleResponse(response);
     if (response?.export) showExport(response.export);
   });
-  els.beginNoteCaptureBtn.addEventListener('click', async () => {
-    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !tab?.url) return;
-    handleResponse(await sendMessage({
-      type: 'BEGIN_NOTE_CAPTURE',
-      payload: { tabId: tab.id, url: tab.url, title: tab.title || '' }
-    }));
-  });
   els.addRankCandidateBtn.addEventListener('click', addCurrentPageCandidate);
   els.finalizeRankCandidatesBtn.addEventListener('click', async () => handleResponse(await sendMessage({ type: 'FINALIZE_RANK_CANDIDATES' })));
   els.newNoteBtn.addEventListener('click', () => {
     const id = makeId('note');
     noteUiState.set(id, {
       id,
-      editing: true,
       draftText: '',
       sourceUrl: session?.noteCaptureLockedUrl || session?.activeUrl || '',
       sourceTitle: session?.activeTitle || ''
@@ -270,33 +268,12 @@ function syncUiState(): void {
     lastSessionRunId = runId;
     resetLocalSessionUi();
   }
-  const committedIds = new Set((session.notes || []).map(note => note.id));
-  for (const note of session.notes || []) {
-    const existing = noteUiState.get(note.id);
-    noteUiState.set(note.id, {
-      id: note.id,
-      editing: existing?.editing || false,
-      draftText: existing?.editing ? existing.draftText : note.committedText,
-      sourceUrl: note.sourceUrl,
-      sourceTitle: note.sourceTitle,
-      committedText: note.committedText
-    });
-  }
-  for (const id of [...noteUiState.keys()]) {
-    if (!committedIds.has(id)) {
-      const ui = noteUiState.get(id);
-      if (!ui?.editing) noteUiState.delete(id);
-    }
-  }
   els.draftInput.value = session.draft?.committedText || '';
 }
 
 function render(): void {
   if (!session) return;
-  document.body.dataset.sessionState = session.sessionState || '';
-  document.body.dataset.phase = session.phase || '';
   els.appRoot.dataset.sessionState = session.sessionState || '';
-  els.appRoot.dataset.phase = session.phase || '';
 
   const operationsMax = getOperationsMax(session);
   const spendOpsCents = Math.max(0, session.spendCents - session.contextExpansionSpendCents);
@@ -311,10 +288,10 @@ function render(): void {
   applyProjectedContextUi();
   els.operationsUsed.textContent = String(session.operationsUsed);
   els.operationsMax.textContent = String(operationsMax);
-  els.operationsMeta.textContent = `Estimated horizon at ${formatMoneyPrecise(OPERATION_COST_CENTS)} / operation.`;
-  els.budgetSpent.textContent = formatMoneyPrecise(session.spendCents);
+  els.operationsMeta.textContent = `Estimated horizon at ${formatMoney(OPERATION_COST_CENTS)} / operation.`;
+  els.budgetSpent.textContent = formatMoney(session.spendCents);
   els.budgetTotal.textContent = formatMoney(session.budgetCents);
-  els.budgetMeta.textContent = `Ops ${formatMoneyPrecise(spendOpsCents)} | Context ${formatMoneyPrecise(spendContextCents)} | Remaining ${formatMoneyPrecise(getBudgetRemainingCents(session))} | Context rate ${formatMoney(TOKEN_COST_CENTS_PER_TOKEN)} / token`;
+  els.budgetMeta.textContent = `Ops ${formatMoney(spendOpsCents)} | Context ${formatMoney(spendContextCents)} | Remaining ${formatMoney(getBudgetRemainingCents(session))} | Context rate ${formatMoney(TOKEN_COST_CENTS_PER_TOKEN)} / token`;
   els.requesterQuestionDisplay.textContent = session.requesterQuestion || 'No requester question assigned yet.';
   els.requesterQuestionDisplay.classList.toggle('muted', !session.requesterQuestion);
   els.workOrderDisplay.textContent = session.workOrder || 'No work order assigned yet.';
@@ -327,9 +304,8 @@ function render(): void {
   renderButtons();
   renderRankCandidates();
   renderRankedPages();
-  renderNoteCaptureQueueMeta();
   renderNotes();
-  renderDeliverableNotes();
+  updateLimitWarning();
   renderTrace();
   renderOnboarding();
   renderPdfCapabilityNotice(session);
@@ -364,7 +340,6 @@ function renderButtons(): void {
   els.endSessionBtn.disabled = !(active && inDeliverable);
   els.addRankCandidateBtn.disabled = !(canManageCandidates && !session.candidateSetFinalized && currentPageCandidate && !currentPageAdded);
   els.finalizeRankCandidatesBtn.disabled = !(canManageCandidates && !session.candidateSetFinalized && hasCandidates);
-  els.beginNoteCaptureBtn.disabled = !(canManageCandidates && hasCandidates && session.candidateSetFinalized);
   els.newNoteBtn.disabled = !(active && inCapture);
   els.nextRankedPageBtn.disabled = !canAdvanceNoteCapture();
   els.enterDeliverableBtn.disabled = !(active && inCapture);
@@ -375,40 +350,35 @@ function renderButtons(): void {
   els.addRankCandidateBtn.textContent = currentPageAdded ? 'Added Candidate' : 'Add Candidate';
 }
 
+
+
 function initOnboarding(): void {
   try {
-    const dismissed = localStorage.getItem(ONBOARDING_STORAGE_KEY);
-    if (dismissed === 'true') {
-      onboardingVisible = false;
-    } else {
-      const legacyDismissed = localStorage.getItem(LEGACY_ONBOARDING_STORAGE_KEY);
-      onboardingVisible = legacyDismissed !== 'true';
-      if (legacyDismissed === 'true') {
-        localStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
-        localStorage.removeItem(LEGACY_ONBOARDING_STORAGE_KEY);
-      }
+    if (localStorage.getItem(ONBOARDING_STORAGE_KEY) === 'true' || localStorage.getItem(LEGACY_ONBOARDING_STORAGE_KEY) === 'true') {
+      localStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
+      localStorage.removeItem(LEGACY_ONBOARDING_STORAGE_KEY);
+      return;
     }
   } catch {
-    onboardingVisible = true;
+    // Show the guide when local storage is unavailable.
   }
-  renderOnboarding();
+  openOnboarding();
 }
 
 function openOnboarding(stepIndex = 0): void {
   onboardingStepIndex = Math.min(Math.max(stepIndex, 0), onboardingSteps.length - 1);
-  onboardingVisible = true;
   renderOnboarding();
+  if (!els.onboardingSection.open) els.onboardingSection.showModal();
 }
 
 function dismissOnboarding(): void {
-  onboardingVisible = false;
+  els.onboardingSection.close();
   try {
     localStorage.setItem(ONBOARDING_STORAGE_KEY, 'true');
     localStorage.removeItem(LEGACY_ONBOARDING_STORAGE_KEY);
   } catch {
     // Local storage can be unavailable in hardened contexts.
   }
-  renderOnboarding();
 }
 
 function getFirstFaqStepIndex(): number {
@@ -416,16 +386,10 @@ function getFirstFaqStepIndex(): number {
   return index === -1 ? 0 : index;
 }
 
-function getFaqPageMeta(currentIndex: number): string {
-  const faqSteps = onboardingSteps.filter(step => step.type === 'faq');
-  const faqIndex = onboardingSteps.slice(0, currentIndex + 1).filter(step => step.type === 'faq').length;
-  return `Page ${faqIndex} of ${faqSteps.length}`;
-}
-
-function getIntroPageMeta(currentIndex: number): string {
-  const introSteps = onboardingSteps.filter(step => step.type !== 'faq');
-  const introIndex = onboardingSteps.slice(0, currentIndex + 1).filter(step => step.type !== 'faq').length;
-  return `Page ${introIndex} of ${introSteps.length}`;
+function getOnboardingPageMeta(currentIndex: number): string {
+  const step = onboardingSteps[currentIndex]!;
+  const group = onboardingSteps.filter(candidate => (candidate.type === 'faq') === (step.type === 'faq'));
+  return `Page ${group.indexOf(step) + 1} of ${group.length}`;
 }
 
 function renderOnboarding(): void {
@@ -433,18 +397,17 @@ function renderOnboarding(): void {
   if (!step) return;
   const isLastStep = onboardingStepIndex === onboardingSteps.length - 1;
   const isFaq = step.type === 'faq';
-  els.onboardingSection.classList.toggle('hidden', !onboardingVisible);
-  document.body.classList.toggle('onboarding-open', onboardingVisible);
+  const isLastIntro = !isFaq && onboardingSteps[onboardingStepIndex + 1]?.type === 'faq';
   els.onboardingSection.dataset.onboardingType = step.type || 'induction';
   els.onboardingEyebrow.textContent = step.eyebrow || 'First-time guide';
   els.onboardingTitle.textContent = step.title;
-  els.onboardingStepMeta.textContent = isFaq ? getFaqPageMeta(onboardingStepIndex) : getIntroPageMeta(onboardingStepIndex);
+  els.onboardingStepMeta.textContent = getOnboardingPageMeta(onboardingStepIndex);
   renderOnboardingStep(step);
   els.onboardingPrevBtn.disabled = onboardingStepIndex === 0;
   els.onboardingFaqBtn.classList.toggle('hidden', isFaq);
   els.onboardingFaqBtn.disabled = isFaq;
-  els.onboardingNextBtn.disabled = isLastStep;
-  els.onboardingNextBtn.textContent = 'Next';
+  els.onboardingNextBtn.disabled = false;
+  els.onboardingNextBtn.textContent = isLastIntro ? 'Go to session' : isLastStep ? 'Done' : 'Next';
   els.dismissOnboardingBtn.textContent = 'Close';
 }
 
@@ -455,20 +418,16 @@ function renderOnboardingStep(step: OnboardingStep): void {
   els.onboardingDossier.classList.toggle('hidden', !isDossier && !isFaq);
   if (isDossier) {
     els.onboardingBody.textContent = '';
-    els.onboardingSupport.textContent = '';
     els.onboardingDossier.innerHTML = renderOnboardingDossier(step.flow || []);
     return;
   }
   if (isFaq) {
     els.onboardingBody.textContent = '';
-    els.onboardingSupport.textContent = '';
     els.onboardingDossier.innerHTML = renderOnboardingFaq(step);
     return;
   }
-  els.onboardingBody.innerHTML = step.bodyHtml || escapeHtml(step.body || '');
-  els.onboardingSupport.textContent = step.support || '';
-  els.onboardingBody.classList.toggle('hidden', !((step.bodyHtml || step.body || '').trim()));
-  els.onboardingSupport.classList.toggle('hidden', !(step.support || '').trim());
+  els.onboardingBody.innerHTML = step.bodyHtml || '';
+  els.onboardingBody.classList.toggle('hidden', !(step.bodyHtml || '').trim());
   els.onboardingDossier.innerHTML = '';
 }
 
@@ -488,7 +447,6 @@ function renderOnboardingDossier(flow: NonNullable<OnboardingStep['flow']>): str
 function renderOnboardingFaq(step: OnboardingStep): string {
   return `
     <article class="onboarding-faq-card">
-      <div class="onboarding-faq-meta">Common questions from humans entering agent-compatible work.</div>
       <div class="onboarding-faq-question">${escapeHtml(step.faqQuestion || '')}</div>
       <div class="onboarding-faq-answer">${escapeHtml(step.faqAnswer || '')}</div>
     </article>
@@ -513,15 +471,9 @@ function renderRankCandidates(): void {
     container.innerHTML = '<div class="trace-item">No candidate sources yet.</div>';
     return;
   }
-  const inCapture = session.phase === Phase.NOTE_CAPTURE;
-  const queueIndex = Number.isInteger(session.noteCaptureQueueIndex) ? session.noteCaptureQueueIndex : null;
-  for (const [index, candidate] of candidates.entries()) {
+  for (const candidate of candidates) {
     const node = document.createElement('article');
-    const isCurrent = inCapture && queueIndex === index;
-    const isVisited = inCapture && queueIndex !== null && index < queueIndex;
     node.className = 'rank-candidate';
-    if (isCurrent) node.classList.add('current');
-    if (isVisited) node.classList.add('visited');
     node.innerHTML = `
       <div class="rank-candidate-head">
         <div class="rank-candidate-copy">
@@ -533,7 +485,9 @@ function renderRankCandidates(): void {
     `;
     const removeBtn = node.querySelector<HTMLButtonElement>('.rank-candidate-remove-btn');
     if (removeBtn) {
-      removeBtn.disabled = inCapture;
+      removeBtn.disabled = session.sessionState !== SessionState.ACTIVE
+        || (session.phase !== Phase.RETRIEVAL && session.phase !== Phase.INSPECTION)
+        || !!session.candidateSetFinalized;
       removeBtn.addEventListener('click', async () => {
         handleResponse(await sendMessage({ type: 'REMOVE_RANK_CANDIDATE', payload: { id: candidate.id } }));
       });
@@ -548,7 +502,7 @@ function renderRankedPages(): void {
   els.rankedPagesSection.classList.toggle('hidden', !finalized);
   if (!finalized) return;
   const container = els.rankedPagesList;
-  const candidates = rankCandidatesInNoteCaptureOrder(session);
+  const candidates = session.rankCandidates;
   const queueIndex = Number.isInteger(session.noteCaptureQueueIndex) ? session.noteCaptureQueueIndex : null;
   container.innerHTML = '';
   for (const [index, candidate] of candidates.entries()) {
@@ -573,26 +527,6 @@ function renderRankedPages(): void {
   }
 }
 
-function renderNoteCaptureQueueMeta(): void {
-  if (!session) return;
-  const total = (session.rankCandidates || []).length;
-  if (!total) {
-    els.noteCaptureQueueMeta.textContent = 'Add pages to the candidate set, then rank them before note capture.';
-    return;
-  }
-  const queueIndex = Number.isInteger(session.noteCaptureQueueIndex) ? session.noteCaptureQueueIndex : null;
-  if (session.phase === Phase.NOTE_CAPTURE && queueIndex !== null) {
-    els.noteCaptureQueueMeta.textContent = `Locked to ranked source ${Math.min(queueIndex + 1, total)} of ${total}. Use Next Ranked Page when you are done with this source.`;
-    return;
-  }
-  if (!session.candidateSetFinalized) {
-    els.noteCaptureQueueMeta.textContent = `${total} candidate source${total === 1 ? '' : 's'} collected. Finish the set in the sidebar, then rank them on the page.`;
-    return;
-  }
-  const label = total === 1 ? '1 candidate source is ready.' : `${total} candidate sources are ready.`;
-  els.noteCaptureQueueMeta.textContent = `${label} Rank them on the page overlay, then begin note taking there.`;
-}
-
 function hasRankCandidate(url = ''): boolean {
   if (!session) return false;
   const normalized = normalizeTrackedUrl(url);
@@ -607,24 +541,30 @@ function canAdvanceNoteCapture(): boolean {
     && session.phase === Phase.NOTE_CAPTURE
     && typeof queueIndex === 'number'
     && Number.isInteger(queueIndex)
+    && hasCommittedNoteForSource(session, session.rankCandidates[queueIndex]?.url)
     && queueIndex < (session.rankCandidates || []).length - 1;
 }
 
 function renderNotes(): void {
   if (!session) return;
+  const covered = session.rankCandidates.filter(candidate => hasCommittedNoteForSource(session, candidate.url)).length;
+  els.notesProgress.textContent = `${covered} of ${session.rankCandidates.length} ranked sources have a committed note.`;
   const container = els.notesList;
   const scrollEl = document.scrollingElement || document.documentElement;
   const preserveScroll = container.contains(document.activeElement);
   const prevScrollTop = scrollEl.scrollTop;
   container.innerHTML = '';
-  const uiItems = [...noteUiState.values()];
-  if (!uiItems.length) {
+  const committedById = new Map(session.notes.map(note => [note.id, note]));
+  const uiItems = new Map<string, NoteBlock | NoteUiState>(committedById);
+  for (const [id, draft] of noteUiState) uiItems.set(id, draft);
+  if (!uiItems.size) {
     container.innerHTML = '<div class="trace-item">No note blocks yet.</div>';
     if (preserveScroll) requestAnimationFrame(() => { scrollEl.scrollTop = prevScrollTop; });
     return;
   }
-  for (const item of uiItems) {
-    const note = session.notes.find(candidate => candidate.id === item.id);
+  for (const item of uiItems.values()) {
+    const note = committedById.get(item.id);
+    const draft = noteUiState.get(item.id);
     const node = els.noteTemplate.content.firstElementChild?.cloneNode(true) as HTMLElement | null;
     if (!node) continue;
     const title = node.querySelector<HTMLElement>('.note-title');
@@ -640,11 +580,12 @@ function renderNotes(): void {
     if (!title || !meta || !readonly || !textarea || !readonlyActions || !editingActions || !commitBtn || !reviseBtn || !cancelBtn) continue;
 
     title.textContent = note ? 'Committed Note' : 'Note';
-    const noteTextForMeta = note?.committedText || item.draftText || '';
-    meta.textContent = `${item.sourceTitle || 'Current page'} | ${countWords(noteTextForMeta)} words | ${roughTokenCount(noteTextForMeta)} tokens`;
+    const noteTextForMeta = note?.committedText || draft?.draftText || '';
+    const noteWords = roughTokenCount(noteTextForMeta);
+    meta.textContent = `${item.sourceTitle || 'Current page'} | ${noteWords} words | ${noteWords} tokens`;
     readonly.textContent = note?.committedText || '';
-    textarea.value = item.editing ? (item.draftText || note?.committedText || '') : '';
-    const editing = !!item.editing;
+    textarea.value = draft?.draftText ?? '';
+    const editing = !!draft;
     node.classList.toggle('editing', editing);
     readonly.classList.toggle('hidden', editing);
     const allowPruneActions = !!note && (contextExceeded || session.phase === Phase.DELIVERABLE);
@@ -664,23 +605,23 @@ function renderNotes(): void {
         }
       });
       if (response?.ok) {
-        noteUiState.set(item.id, { ...item, editing: false, draftText: textarea.value, committedText: textarea.value });
+        noteUiState.delete(item.id);
       }
       handleResponse(response);
     });
     reviseBtn.addEventListener('click', async () => {
       noteUiState.set(item.id, {
-        ...item,
-        editing: true,
-        draftText: note?.committedText || item.draftText || '',
-        committedText: note?.committedText || ''
+        id: item.id,
+        sourceUrl: item.sourceUrl,
+        sourceTitle: item.sourceTitle,
+        draftText: note?.committedText || ''
       });
       await sendMessage({ type: 'OPEN_NOTE_REVISION', payload: { id: item.id } });
       renderNotes();
     });
     cancelBtn.addEventListener('click', () => {
-      if (note) noteUiState.set(item.id, { ...item, editing: false, draftText: note.committedText, committedText: note.committedText });
-      else noteUiState.delete(item.id);
+      noteUiState.delete(item.id);
+      updateLimitWarning();
       renderNotes();
     });
     if (deleteBtn && note) {
@@ -690,7 +631,7 @@ function renderNotes(): void {
       });
     }
     textarea.addEventListener('input', () => {
-      noteUiState.set(item.id, { ...item, editing: true, draftText: textarea.value });
+      noteUiState.set(item.id, { ...draft!, draftText: textarea.value });
       updateLimitWarning();
     });
     container.appendChild(node);
@@ -704,19 +645,10 @@ function renderNotes(): void {
   }
 }
 
-
-
-function renderDeliverableNotes(): void {
-  if (!session) return;
-  els.deliverableSection.classList.toggle('deliverable-active', session.phase === Phase.DELIVERABLE);
-  updateLimitWarning();
-}
-
 function getLiveNotesText(): string {
   const committedById = new Map((session?.notes || []).map(note => [note.id, note.committedText || '']));
   for (const [id, item] of noteUiState.entries()) {
-    if (item?.editing) committedById.set(id, item.draftText || '');
-    else if (!committedById.has(id) && item?.draftText) committedById.set(id, item.draftText);
+    committedById.set(id, item.draftText);
   }
   return [...committedById.values()].join('\n');
 }
@@ -729,28 +661,19 @@ function getProjectedContextBreakdown() {
   });
 }
 
-function applyProjectedContextUi(): void {
-  if (!session) return;
+function applyProjectedContextUi(): number {
+  if (!session) return 0;
   const breakdown = getProjectedContextBreakdown();
   els.contextUsed.textContent = String(breakdown.total);
-  els.contextMeta.textContent = `Task ${breakdown.task} | Notes ${breakdown.notes} | Draft ${breakdown.draft}`;
+  els.contextMeta.textContent = `Assigned task ${breakdown.task} | Notes ${breakdown.notes} | Draft ${breakdown.draft}`;
   const contextRatio = session.contextMax ? breakdown.total / session.contextMax : 0;
   setBar(els.contextFill, contextRatio, CONTEXT_WARNING_THRESHOLD);
-}
-
-function getProjectedContextUsage(): { tokens: number; maxTokens: number } {
-  return {
-    tokens: getProjectedContextBreakdown().total,
-    maxTokens: Number(session?.contextMax) || 0
-  };
+  return breakdown.total;
 }
 
 function updateLimitWarning(): void {
   if (!session) return;
-  applyProjectedContextUi();
-  const usage = getProjectedContextUsage();
-  const overBy = usage.tokens - usage.maxTokens;
-  const nextExceeded = overBy > 0;
+  const nextExceeded = applyProjectedContextUi() > session.contextMax;
   if (nextExceeded !== contextExceeded) {
     contextExceeded = nextExceeded;
     renderNotes();
@@ -807,12 +730,4 @@ function byId<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
   if (!el) throw new Error(`Missing element #${id}`);
   return el as T;
-}
-
-function adoptSession(next: AgentSession | null): void {
-  if (!next || retiredSessionRunIds.has(next.sessionRunId)) return;
-  if (document.body.dataset.sectionTour) { deferredSession = next; return; }
-  session = next;
-  syncUiState();
-  render();
 }

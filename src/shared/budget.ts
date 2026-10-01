@@ -41,10 +41,6 @@ export function formatMoney(cents: number): string {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-export function formatMoneyPrecise(cents: number): string {
-  return formatMoney(cents);
-}
-
 export function roundCents(cents: number): number {
   return Math.round(Number(cents || 0));
 }

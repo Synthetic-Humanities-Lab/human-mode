@@ -1,28 +1,20 @@
-import { STORAGE_KEY, type RuntimeMessage, type RuntimeResponse, type AgentSession } from '../../src/shared';
-
-type Listener<T extends (...args: any[]) => any> = T;
+import { type RuntimeMessage, type RuntimeResponse } from '../../src/shared';
 
 class FakeEvent<T extends (...args: any[]) => any> {
-  private listeners: Array<Listener<T>> = [];
+  private listeners: T[] = [];
 
-  addListener(listener: Listener<T>): void {
+  addListener(listener: T): void {
     this.listeners.push(listener);
   }
 
-  clear(): void {
-    this.listeners = [];
-  }
-
-  getListeners(): Array<Listener<T>> {
+  getListeners(): T[] {
     return [...this.listeners];
   }
 
-  async trigger(...args: Parameters<T>): Promise<Array<Awaited<ReturnType<T>>>> {
-    const results: Array<Awaited<ReturnType<T>>> = [];
+  async trigger(...args: Parameters<T>): Promise<void> {
     for (const listener of this.listeners) {
-      results.push(await listener(...args));
+      await listener(...args);
     }
-    return results;
   }
 }
 
@@ -38,18 +30,11 @@ export interface FakeTab {
 }
 
 interface CreateChromeMockOptions {
-  session?: AgentSession;
   tabs?: FakeTab[];
-  activeTabId?: number;
-  messageHandler?: (message: RuntimeMessage) => Promise<RuntimeResponse | null> | RuntimeResponse | null;
 }
 
 export function createChromeMock(options: CreateChromeMockOptions = {}) {
   const store: Record<string, unknown> = {};
-  if (options.session) {
-    store[STORAGE_KEY] = structuredClone(options.session);
-  }
-
   let tabs = (options.tabs || []).map(tab => ({
     active: false,
     currentWindow: true,
@@ -59,17 +44,11 @@ export function createChromeMock(options: CreateChromeMockOptions = {}) {
   }));
 
   if (tabs.length && !tabs.some(tab => tab.active)) {
-    const activeId = options.activeTabId ?? tabs[0]?.id;
+    const activeId = tabs[0]?.id;
     tabs = tabs.map(tab => ({ ...tab, active: tab.id === activeId }));
   }
 
   const updates: Array<{ tabId: number; updateProperties: Record<string, unknown> }> = [];
-  const highlighted: Array<{ windowId: number; tabs: number }> = [];
-  const removedTabIds: number[] = [];
-  const tabMessages: Array<{ tabId: number; message: unknown }> = [];
-  const runtimeMessages: unknown[] = [];
-  const windowUpdates: Array<{ windowId: number; updateInfo: Record<string, unknown> }> = [];
-  const panelBehaviors: Array<Record<string, unknown>> = [];
 
   const runtimeOnInstalled = new FakeEvent<() => void | Promise<void>>();
   const runtimeOnMessage = new FakeEvent<
@@ -89,32 +68,14 @@ export function createChromeMock(options: CreateChromeMockOptions = {}) {
     runtime: {
       onInstalled: runtimeOnInstalled,
       onMessage: runtimeOnMessage,
-      async sendMessage(message: RuntimeMessage | { type: string; [key: string]: unknown }) {
-        runtimeMessages.push(message);
-        if (options.messageHandler) {
-          return await options.messageHandler(message as RuntimeMessage);
-        }
+      async sendMessage() {
         return null;
-      },
-      getURL(path: string) {
-        return `chrome-extension://test/${path}`;
       }
     },
     storage: {
       local: {
-        async get(key: string | string[] | Record<string, unknown> | null) {
-          if (typeof key === 'string') {
-            return { [key]: store[key] };
-          }
-          if (Array.isArray(key)) {
-            return Object.fromEntries(key.map(entry => [entry, store[entry]]));
-          }
-          if (!key) {
-            return { ...store };
-          }
-          return Object.fromEntries(
-            Object.entries(key).map(([entry, fallback]) => [entry, store[entry] ?? fallback])
-          );
+        async get(key: string | string[]) {
+          return Object.fromEntries((typeof key === 'string' ? [key] : key).map(entry => [entry, store[entry]]));
         },
         async set(value: Record<string, unknown>) {
           Object.assign(store, structuredClone(value));
@@ -127,9 +88,7 @@ export function createChromeMock(options: CreateChromeMockOptions = {}) {
       }
     },
     sidePanel: {
-      async setPanelBehavior(behavior: Record<string, unknown>) {
-        panelBehaviors.push(behavior);
-      }
+      async setPanelBehavior() {}
     },
     tabs: {
       onActivated: tabsOnActivated,
@@ -163,22 +122,15 @@ export function createChromeMock(options: CreateChromeMockOptions = {}) {
         if (!found) throw new Error(`Unknown tab ${tabId}`);
         return found;
       },
-      async sendMessage(tabId: number, message: unknown) {
-        tabMessages.push({ tabId, message });
-      },
+      async sendMessage() {},
       async remove(tabId: number) {
-        removedTabIds.push(tabId);
         tabs = tabs.filter(tab => tab.id !== tabId);
       },
-      async highlight(info: { windowId: number; tabs: number }) {
-        highlighted.push(info);
-      }
+      async highlight() {}
     },
     windows: {
       WINDOW_ID_NONE: -1,
-      async update(windowId: number, updateInfo: Record<string, unknown>) {
-        windowUpdates.push({ windowId, updateInfo });
-      }
+      async update() {}
     },
     webNavigation: {
       onCommitted: webNavigationOnCommitted
@@ -188,20 +140,9 @@ export function createChromeMock(options: CreateChromeMockOptions = {}) {
   return {
     chrome: chromeMock as unknown as typeof chrome,
     store,
-    getTabs: () => tabs,
     updates,
-    highlighted,
-    removedTabIds,
-    runtimeMessages,
-    tabMessages,
-    windowUpdates,
-    panelBehaviors,
     events: {
-      runtimeOnInstalled,
       runtimeOnMessage,
-      tabsOnActivated,
-      tabsOnHighlighted,
-      tabsOnCreated,
       tabsOnUpdated,
       webNavigationOnCommitted
     }

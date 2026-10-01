@@ -10,7 +10,7 @@ import {
   SessionState,
   TraceKind
 } from './types';
-import { makeId, now } from './ids';
+import { makeId } from './ids';
 import { getPageLabel, normalizeTrackedUrl } from './urls';
 import { getBudgetRemainingCents, getContextBreakdown, getOperationsMax, moneyFromCents } from './budget';
 
@@ -29,7 +29,6 @@ export function createEmptySession(): AgentSession {
     operationsUsed: 0,
     contextMax: DEFAULT_CONTEXT_MAX,
     contextExpansionSpendCents: 0,
-    currentSearchQuery: '',
     activeTabId: null,
     activeUrl: '',
     activeTitle: '',
@@ -40,21 +39,18 @@ export function createEmptySession(): AgentSession {
     lastTrackedNavigationUrl: '',
     navigationChain: [],
     rankCandidates: [],
-    noteCaptureRankOrder: [],
     notes: [],
     draft: {
-      committedText: '',
-      updatedAt: 0
+      committedText: ''
     },
-    trace: [],
-    lastUpdatedAt: now()
+    trace: []
   };
 }
 
 export function hydrateSession(input: unknown): AgentSession {
   const fallback = createEmptySession();
   const source = isRecord(input) ? input : {};
-  const session = { ...fallback, ...source } as AgentSession & Record<string, unknown>;
+  const session = fallback;
 
   session.sessionRunId = stringFrom(source.sessionRunId, fallback.sessionRunId);
   session.sessionState = enumValue(source.sessionState, Object.values(SessionState), fallback.sessionState);
@@ -76,7 +72,6 @@ export function hydrateSession(input: unknown): AgentSession {
   session.operationsUsed = nonNegativeNumberFrom(source.operationsUsed);
   session.contextMax = positiveNumberFrom(source.contextMax, DEFAULT_CONTEXT_MAX);
   session.contextExpansionSpendCents = nonNegativeNumberFrom(source.contextExpansionSpendCents);
-  session.currentSearchQuery = stringFrom(source.currentSearchQuery);
   session.activeTabId = nullableIntegerFrom(source.activeTabId);
   session.activeUrl = stringFrom(source.activeUrl);
   session.activeTitle = stringFrom(source.activeTitle);
@@ -90,14 +85,10 @@ export function hydrateSession(input: unknown): AgentSession {
   session.lastTrackedNavigationUrl = stringFrom(source.lastTrackedNavigationUrl);
   session.navigationChain = stringArrayFrom(source.navigationChain).filter(Boolean);
   session.rankCandidates = rankCandidatesFrom(source.rankCandidates);
-  session.noteCaptureRankOrder = stringArrayFrom(source.noteCaptureRankOrder);
   session.notes = notesFrom(source.notes);
   session.draft = draftFrom(source.draft);
   session.trace = Array.isArray(source.trace) ? source.trace.filter(isTraceEntryLike) : [];
-  session.lastUpdatedAt = nonNegativeNumberFrom(source.lastUpdatedAt, fallback.lastUpdatedAt);
-  delete session.sessionPlan;
 
-  reconcileNoteCaptureRankOrder(session);
   if (
     session.noteCaptureQueueIndex !== null
     && (session.noteCaptureQueueIndex < 0 || session.noteCaptureQueueIndex >= session.rankCandidates.length)
@@ -108,26 +99,9 @@ export function hydrateSession(input: unknown): AgentSession {
   return session;
 }
 
-export function reconcileNoteCaptureRankOrder(session: AgentSession): void {
-  const candidates = session.rankCandidates || [];
-  if (!Array.isArray(session.noteCaptureRankOrder)) session.noteCaptureRankOrder = [];
-  const validIds = new Set(candidates.map(candidate => candidate.id));
-  session.noteCaptureRankOrder = session.noteCaptureRankOrder.filter(id => validIds.has(id));
-  for (const candidate of candidates) {
-    if (!session.noteCaptureRankOrder.includes(candidate.id)) session.noteCaptureRankOrder.push(candidate.id);
-  }
-}
-
-export function rankCandidatesInNoteCaptureOrder(session: AgentSession): RankCandidate[] {
-  const candidates = session.rankCandidates || [];
-  const byId = new Map(candidates.map(candidate => [candidate.id, candidate]));
-  const order = Array.isArray(session.noteCaptureRankOrder) ? session.noteCaptureRankOrder : [];
-  const ordered = order.map(id => byId.get(id)).filter((candidate): candidate is RankCandidate => Boolean(candidate));
-  const seen = new Set(ordered.map(candidate => candidate.id));
-  for (const candidate of candidates) {
-    if (!seen.has(candidate.id)) ordered.push(candidate);
-  }
-  return ordered;
+export function hasCommittedNoteForSource(session: AgentSession | null, url = ''): boolean {
+  const target = normalizeTrackedUrl(url);
+  return !!target && !!session?.notes.some(note => normalizeTrackedUrl(note.sourceUrl) === target);
 }
 
 export function makeSessionExport(session: AgentSession, outcome: SessionState): SessionExport {
@@ -183,18 +157,16 @@ function notesFrom(value: unknown): NoteBlock[] {
         id: stringFrom(note.id, makeId('note')),
         sourceUrl: stringFrom(note.sourceUrl),
         sourceTitle: stringFrom(note.sourceTitle),
-        committedText: stringFrom(note.committedText),
-        updatedAt: nonNegativeNumberFrom(note.updatedAt)
+        committedText: stringFrom(note.committedText)
       };
     })
     .filter((note): note is NoteBlock => Boolean(note));
 }
 
 function draftFrom(value: unknown): DraftState {
-  if (!isRecord(value)) return { committedText: '', updatedAt: 0 };
+  if (!isRecord(value)) return { committedText: '' };
   return {
-    committedText: stringFrom(value.committedText),
-    updatedAt: nonNegativeNumberFrom(value.updatedAt)
+    committedText: stringFrom(value.committedText)
   };
 }
 

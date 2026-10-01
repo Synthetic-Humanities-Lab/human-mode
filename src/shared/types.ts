@@ -40,7 +40,6 @@ export const TraceKind = {
   BLOCKED_ACTION: 'blocked_action',
   PAGE_EXIT_DURING_CAPTURE: 'page_exit_during_capture',
   BLOCKED_TYPED_NAV: 'blocked_typed_nav',
-  TAB_SWITCH_PAUSE: 'tab_switch_pause',
   BLOCKED_BACK_NAV: 'blocked_back_nav',
   RANK_CANDIDATE_ADD: 'rank_candidate_add',
   RANK_CANDIDATE_REMOVE: 'rank_candidate_remove',
@@ -91,12 +90,10 @@ export interface NoteBlock {
   sourceUrl: string;
   sourceTitle: string;
   committedText: string;
-  updatedAt: number;
 }
 
 export interface DraftState {
   committedText: string;
-  updatedAt: number;
 }
 
 export interface AgentSession {
@@ -113,7 +110,6 @@ export interface AgentSession {
   operationsUsed: number;
   contextMax: number;
   contextExpansionSpendCents: number;
-  currentSearchQuery: string;
   activeTabId: number | null;
   activeUrl: string;
   activeTitle: string;
@@ -124,13 +120,9 @@ export interface AgentSession {
   lastTrackedNavigationUrl: string;
   navigationChain: string[];
   rankCandidates: RankCandidate[];
-  noteCaptureRankOrder: string[];
   notes: NoteBlock[];
   draft: DraftState;
   trace: TraceEntry[];
-  lastUpdatedAt: number;
-  estimatedSpend?: number;
-  operationsMax?: number;
 }
 
 export interface SessionExport {
@@ -157,21 +149,3 @@ export interface SessionExport {
     draftCommits: number;
   };
 }
-
-export type RuntimeError =
-  | 'CANDIDATE_SET_NOT_FINALIZED'
-  | 'CANDIDATES_LOCKED'
-  | 'CONTEXT_FULL'
-  | 'DUPLICATE_RANK_CANDIDATE'
-  | 'EMPTY_NOTE'
-  | 'INVALID_CANDIDATE_PAGE'
-  | 'MISSING_NOTE_FOR_RANKED_SOURCE'
-  | 'MISSING_NOTES_FOR_ALL_RANKED_SOURCES'
-  | 'NO_ACTIVE_TAB'
-  | 'NO_NEXT_NOTE_CAPTURE_SOURCE'
-  | 'NO_RANK_CANDIDATES'
-  | 'NOT_IN_NOTE_CAPTURE'
-  | 'OUT_OF_BUDGET'
-  | 'PDF_TOOL_UNAVAILABLE'
-  | 'TASK_BANK_EMPTY'
-  | 'UNKNOWN_MESSAGE';
