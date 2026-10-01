@@ -1,4 +1,3 @@
-import { DEFAULT_BUDGET_CENTS, OPERATION_COST_CENTS, TOKEN_COST_CENTS_PER_TOKEN, getOperationsMax } from '../shared';
 import {
   AgentSession,
   BroadcastMessage,
@@ -67,15 +66,11 @@ const els = {
   contextMax: byId<HTMLElement>('contextMax'),
   contextFill: byId<HTMLElement>('contextFill'),
   contextMeta: byId<HTMLElement>('contextMeta'),
-  operationsUsed: byId<HTMLElement>('operationsUsed'),
-  operationsMax: byId<HTMLElement>('operationsMax'),
-  operationsFill: byId<HTMLElement>('operationsFill'),
-  operationsMeta: byId<HTMLElement>('operationsMeta'),
-  budgetSpent: byId<HTMLElement>('budgetSpent'),
-  budgetTotal: byId<HTMLElement>('budgetTotal'),
-  budgetDisplay: byId<HTMLElement>('budgetDisplay'),
+  budgetRemaining: byId<HTMLElement>('budgetRemaining'),
   budgetFill: byId<HTMLElement>('budgetFill'),
   budgetMeta: byId<HTMLElement>('budgetMeta'),
+  sessionActions: byId<HTMLElement>('sessionActions'),
+  sessionFinishedMessage: byId<HTMLElement>('sessionFinishedMessage'),
   assignedTaskSection: byId<HTMLElement>('assignedTaskSection'),
   candidateSection: byId<HTMLElement>('candidateSection'),
   notesSection: byId<HTMLElement>('notesSection'),
@@ -275,35 +270,30 @@ function render(): void {
   if (!session) return;
   els.appRoot.dataset.sessionState = session.sessionState || '';
 
-  const operationsMax = getOperationsMax(session);
   const spendOpsCents = Math.max(0, session.spendCents - session.contextExpansionSpendCents);
   const spendContextCents = session.contextExpansionSpendCents;
   const budgetRatio = session.budgetCents ? session.spendCents / session.budgetCents : 0;
-  const opsRatio = operationsMax ? session.operationsUsed / operationsMax : 0;
 
-  els.modeBadge.textContent = session.sessionState === SessionState.ACTIVE ? 'HUMAN MODE ON' : session.sessionState.toUpperCase();
+  els.modeBadge.textContent = session.sessionState === SessionState.ACTIVE ? 'ON' : session.sessionState.toUpperCase();
   els.stateValue.textContent = pretty(session.sessionState);
-  els.phaseValue.textContent = pretty(session.phase);
+  els.phaseValue.textContent = ({ start: 'Request', framing: 'Request', retrieval: 'Collect', inspection: 'Rank', note_capture: 'Notes', deliverable: 'Deliver' })[session.phase];
   els.contextMax.textContent = String(session.contextMax);
   applyProjectedContextUi();
-  els.operationsUsed.textContent = String(session.operationsUsed);
-  els.operationsMax.textContent = String(operationsMax);
-  els.operationsMeta.textContent = `Estimated horizon at ${formatMoney(OPERATION_COST_CENTS)} / operation.`;
-  els.budgetSpent.textContent = formatMoney(session.spendCents);
-  els.budgetTotal.textContent = formatMoney(session.budgetCents);
-  els.budgetMeta.textContent = `Ops ${formatMoney(spendOpsCents)} | Context ${formatMoney(spendContextCents)} | Remaining ${formatMoney(getBudgetRemainingCents(session))} | Context rate ${formatMoney(TOKEN_COST_CENTS_PER_TOKEN)} / token`;
+  els.budgetRemaining.textContent = formatMoney(getBudgetRemainingCents(session));
+  els.budgetMeta.textContent = [
+    `Actions ${formatMoney(spendOpsCents)}`,
+    `Text and capacity ${formatMoney(spendContextCents)}`
+  ].join(' · ');
   els.requesterQuestionDisplay.textContent = session.requesterQuestion || 'No requester question assigned yet.';
   els.requesterQuestionDisplay.classList.toggle('muted', !session.requesterQuestion);
   els.workOrderDisplay.textContent = session.workOrder || 'No work order assigned yet.';
   els.workOrderDisplay.classList.toggle('muted', !session.workOrder);
-  els.budgetDisplay.textContent = `Maximum completion budget: ${formatMoney(session.budgetCents || DEFAULT_BUDGET_CENTS)}.`;
-  els.budgetDisplay.classList.remove('muted');
 
-  setBar(els.operationsFill, opsRatio, 0.85);
   setBar(els.budgetFill, budgetRatio, 0.85);
   renderButtons();
   renderRankCandidates();
   renderRankedPages();
+  renderLayout();
   renderNotes();
   updateLimitWarning();
   renderTrace();
@@ -329,10 +319,13 @@ function renderButtons(): void {
   const inDeliverable = session.phase === Phase.DELIVERABLE;
   const canManageCandidates = active && (inRetrieval || inInspection);
   const hasCandidates = (session.rankCandidates || []).length > 0;
+  const allSourcesCovered = hasCandidates && session.rankCandidates.every(candidate => hasCommittedNoteForSource(session, candidate.url));
   const currentPageCandidate = isCandidatePage(session.activeUrl);
   const currentPageAdded = hasRankCandidate(session.activeUrl);
+  const finished = session.sessionState === SessionState.COMPLETED || session.sessionState === SessionState.ABORTED;
 
   els.startSessionBtn.disabled = !(session.sessionState === SessionState.OFF || session.sessionState === SessionState.COMPLETED || session.sessionState === SessionState.ABORTED);
+  els.startSessionBtn.innerHTML = finished ? 'New Session' : 'Start Session <span aria-hidden="true">↗</span>';
   els.pauseResumeSessionBtn.disabled = !(active || paused);
   els.pauseResumeSessionBtn.textContent = paused ? 'Resume' : 'Pause';
   els.abortSessionBtn.disabled = !(active || paused);
@@ -342,7 +335,7 @@ function renderButtons(): void {
   els.finalizeRankCandidatesBtn.disabled = !(canManageCandidates && !session.candidateSetFinalized && hasCandidates);
   els.newNoteBtn.disabled = !(active && inCapture);
   els.nextRankedPageBtn.disabled = !canAdvanceNoteCapture();
-  els.enterDeliverableBtn.disabled = !(active && inCapture);
+  els.enterDeliverableBtn.disabled = !(active && inCapture && allSourcesCovered);
   els.commitDraftBtn.disabled = !(active && inDeliverable);
   els.draftInput.disabled = !(active && inDeliverable);
   els.downloadDeliverableBtn.disabled = !exportPayload?.deliverable;
@@ -350,7 +343,39 @@ function renderButtons(): void {
   els.addRankCandidateBtn.textContent = currentPageAdded ? 'Added Candidate' : 'Add Candidate';
 }
 
+function renderLayout(): void {
+  if (!session) return;
+  const state = session.sessionState;
+  const live = state === SessionState.ACTIVE || state === SessionState.PAUSED;
+  const collecting = session.phase === Phase.RETRIEVAL || session.phase === Phase.INSPECTION;
+  const capturing = session.phase === Phase.NOTE_CAPTURE;
+  const drafting = session.phase === Phase.DELIVERABLE;
+  const finished = state === SessionState.COMPLETED;
+  const ended = finished || state === SessionState.ABORTED;
 
+  els.startSessionBtn.classList.toggle('hidden', live);
+  els.sessionFinishedMessage.classList.toggle('hidden', !ended);
+  els.sessionFinishedMessage.querySelector('strong')!.textContent = finished ? 'Session complete' : 'Session ended';
+  els.sessionFinishedMessage.querySelector('span')!.textContent = finished ? 'Download your deliverable below.' : 'Download the session record below.';
+  els.pauseResumeSessionBtn.classList.toggle('hidden', !live);
+  els.endSessionBtn.classList.toggle('hidden', !(state === SessionState.ACTIVE && drafting));
+  els.sessionActions.classList.toggle('hidden', !live);
+  els.assignedTaskSection.classList.toggle('hidden', state === SessionState.OFF);
+  els.candidateSection.classList.toggle('hidden', !(live && collecting));
+  els.rankedPagesSection.classList.toggle('hidden', !(session.candidateSetFinalized && (capturing || drafting || finished)));
+  els.notesSection.classList.toggle('hidden', !((live && (capturing || drafting)) || finished));
+  els.deliverableSection.classList.toggle('hidden', !((live && drafting) || finished));
+  els.traceSection.classList.toggle('hidden', state === SessionState.OFF);
+
+  const stages = ['start', 'retrieval', 'inspection', 'note_capture', 'deliverable'];
+  const current = Math.max(0, stages.indexOf(session.phase === Phase.FRAMING ? 'start' : session.phase));
+  document.querySelectorAll<HTMLElement>('.workflow li').forEach((step, index) => {
+    step.classList.toggle('current', !finished && index === current);
+    step.classList.toggle('complete', finished || index < current);
+    if (!finished && index === current) step.setAttribute('aria-current', 'step');
+    else step.removeAttribute('aria-current');
+  });
+}
 
 function initOnboarding(): void {
   try {
@@ -499,7 +524,6 @@ function renderRankCandidates(): void {
 function renderRankedPages(): void {
   if (!session) return;
   const finalized = !!session.candidateSetFinalized;
-  els.rankedPagesSection.classList.toggle('hidden', !finalized);
   if (!finalized) return;
   const container = els.rankedPagesList;
   const candidates = session.rankCandidates;
@@ -507,6 +531,7 @@ function renderRankedPages(): void {
   container.innerHTML = '';
   for (const [index, candidate] of candidates.entries()) {
     const node = document.createElement('article');
+    const sourceHost = new URL(candidate.url).hostname.replace(/^www\./, '');
     const isCurrent = session.phase === Phase.NOTE_CAPTURE && queueIndex === index;
     const isVisited = session.phase === Phase.NOTE_CAPTURE && queueIndex !== null && index < queueIndex;
     const badge = isCurrent ? 'Current' : isVisited ? 'Visited' : '';
@@ -518,9 +543,11 @@ function renderRankedPages(): void {
         <div class="ranked-page-order">${index + 1}</div>
         <div class="ranked-page-copy">
           <div class="rank-candidate-title">${escapeHtml(candidate.title || 'Untitled page')}</div>
-          <div class="rank-candidate-url">${escapeHtml(candidate.url)}</div>
+          <div class="ranked-page-meta">
+            <div class="rank-candidate-url" title="${escapeHtml(candidate.url)}">${escapeHtml(sourceHost)}</div>
+            ${badge ? `<div class="rank-candidate-badge">${escapeHtml(badge)}</div>` : ''}
+          </div>
         </div>
-        ${badge ? `<div class="rank-candidate-badge">${escapeHtml(badge)}</div>` : ''}
       </div>
     `;
     container.appendChild(node);

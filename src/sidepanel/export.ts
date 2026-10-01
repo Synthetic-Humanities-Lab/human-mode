@@ -4,7 +4,7 @@ export function renderExportSummary(exportData: SessionExport): string {
   return `
     <strong>${pretty(exportData.outcome)}</strong><br>
     Deliverable: ${exportData.deliverable ? 'available' : 'none'}<br>
-    Operations used: ${exportData.stats.operationsUsed}<br>
+    Budget spent: $${(exportData.spendCents / 100).toFixed(2)}<br>
     Final context: ${escapeHtml(exportData.stats.finalContextLoad)}
   `;
 }

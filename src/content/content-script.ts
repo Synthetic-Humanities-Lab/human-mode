@@ -22,6 +22,12 @@ void init();
 
 async function init(): Promise<void> {
   ensureRoot();
+  try {
+    const font = new FontFace('Inter', `url("${chrome.runtime.getURL('fonts/InterVariable.woff2')}") format("woff2")`, { weight: '100 900' });
+    document.fonts.add(await font.load());
+  } catch (error) {
+    console.warn('Human Mode: Inter font could not load.', error);
+  }
   document.addEventListener('click', blockPdfNavigation, true);
   document.addEventListener('auxclick', blockPdfNavigation, true);
   chrome.runtime.onMessage.addListener((message: BroadcastMessage) => {
@@ -76,8 +82,6 @@ function ensureRoot(): void {
 
   root = mount;
 }
-
-
 
 function render(): void {
   if (!root) return;
@@ -304,6 +308,7 @@ function createReadingPanel(reading: ReadingPayload): HTMLElement {
   header.innerHTML = `
     <div class="human-mode-reader-kicker">Reading Mode</div>
     <div class="human-mode-reader-meta">Note capture locked | ${escapeHtml(reading.source || location.hostname)}</div>
+    <div class="human-mode-reader-meta">Select and copy useful evidence, then paste it into a note in the side panel.</div>
   `;
 
   const title = document.createElement('h2');
@@ -312,14 +317,16 @@ function createReadingPanel(reading: ReadingPayload): HTMLElement {
 
   const content = document.createElement('div');
   content.className = 'human-mode-reader-content';
+  const titleBlockIndex = reading.blocks.findIndex(block => block.type === 'heading' && block.text === reading.title);
+  const bodyBlocks = reading.blocks.filter((_, index) => index !== titleBlockIndex);
 
-  if (!reading.blocks.length) {
+  if (!bodyBlocks.length) {
     const empty = document.createElement('p');
     empty.className = 'human-mode-reader-empty';
     empty.textContent = 'Could not extract a clean reading view for this page.';
     content.appendChild(empty);
   } else {
-    for (const block of reading.blocks) {
+    for (const block of bodyBlocks) {
       const node = document.createElement(block.type === 'heading' ? 'h3' : block.type === 'quote' ? 'blockquote' : block.type === 'code' ? 'pre' : 'p');
       node.className = `human-mode-reader-block ${block.type}`;
       node.textContent = block.text;

@@ -85,8 +85,7 @@ export function initSectionTour(beforeOpen: () => void, afterClose: () => void):
     text('workOrderDisplay', tutorialTask.workOrder);
     text('stateValue', 'Active');
     text('phaseValue', 'Collect');
-    text('budgetSpent', '$0.02');
-    text('budgetTotal', '$10.00');
+    text('budgetRemaining', '$9.98');
     text('budgetMeta', 'Actions $0.02 · Text and capacity $0.00');
     text('contextUsed', '27');
     text('contextMeta', 'Assigned task 27 | Notes 0 | Draft 0');

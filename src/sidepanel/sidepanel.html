@@ -8,19 +8,26 @@
 </head>
 <body>
   <div id="appRoot" class="app">
-    <header class="header panel">
-      <div>
-        <h1>Human Mode</h1>
-        <p class="subtitle">Complete an assigned research routine as a proudly human operator in an agent-compatible workflow.</p>
-      </div>
+    <header class="header">
+      <div class="brand"><img class="brand-mark" src="../icons/icon-128.png" alt="" /><h1>Human Mode</h1></div>
       <div class="header-actions">
-        <button id="openFaqBtn" class="secondary" type="button">FAQs</button>
-        <button id="openTutorialBtn" class="secondary" type="button">Tutorial</button>
-        <button id="openSettingsBtn" class="secondary" type="button">Settings</button>
-        <button id="openOnboardingBtn" class="secondary ghost-button" type="button">How It Works</button>
         <div id="modeBadge" class="badge">OFF</div>
+        <button id="openOnboardingBtn" class="secondary ghost-button" type="button">How It Works</button>
+        <button id="openFaqBtn" class="secondary ghost-button" type="button">FAQs</button>
+        <button id="openTutorialBtn" class="secondary ghost-button" type="button">Tutorial</button>
+        <button id="openSettingsBtn" class="secondary ghost-button" type="button">Settings</button>
       </div>
     </header>
+
+    <div class="workflow" aria-label="Session progress">
+      <ol>
+        <li data-step="start"><span>01</span> Request</li>
+        <li data-step="retrieval"><span>02</span> Collect</li>
+        <li data-step="inspection"><span>03</span> Rank</li>
+        <li data-step="note_capture"><span>04</span> Notes</li>
+        <li data-step="deliverable"><span>05</span> Deliver</li>
+      </ol>
+    </div>
 
     <dialog id="onboardingSection" class="onboarding-card" aria-labelledby="onboardingTitle">
         <div class="section-header">
@@ -41,19 +48,27 @@
         </div>
     </dialog>
 
-    <section class="panel controls">
-      <div class="button-row">
-        <button id="startSessionBtn">Start Session</button>
-        <button id="pauseResumeSessionBtn" class="secondary" type="button" disabled>Pause</button>
-        <button id="abortSessionBtn" class="danger">Abort</button>
+    <section class="controls" aria-label="Session actions">
+      <div class="hero-copy">
+        <div class="eyebrow">Research workspace</div>
+        <h2>Your next assignment awaits.</h2>
+        <p class="subtitle">Complete an assigned research routine as a proudly human operator in an agent-compatible workflow.</p>
       </div>
-      <div class="button-row">
-        <button id="expandContextBtn" class="secondary">Expand Context</button>
+      <div id="sessionFinishedMessage" class="session-finished hidden"><strong>Session complete</strong><span>Download your deliverable below.</span></div>
+      <div class="button-row primary-actions">
+        <button id="startSessionBtn">Start Session <span aria-hidden="true">↗</span></button>
+        <div id="sessionActions" class="session-actions hidden">
+          <button id="expandContextBtn" class="secondary" type="button">Expand Context</button>
+          <button id="pauseResumeSessionBtn" class="secondary" type="button" disabled>Pause</button>
+          <button id="abortSessionBtn" class="danger" type="button">Abort</button>
+        </div>
         <button id="endSessionBtn" class="secondary">End Session</button>
       </div>
     </section>
 
-    <section id="resourcesPanel" class="panel stats-grid">
+    <section id="resourcesPanel" class="panel resource-panel">
+      <div class="resource-heading"><h2>Resources</h2></div>
+      <div class="stats-grid">
       <div class="stat-card">
         <div class="label">State</div>
         <div id="stateValue" class="value">OFF</div>
@@ -63,29 +78,24 @@
         <div id="phaseValue" class="value">START</div>
       </div>
       <div class="stat-card full">
-        <div class="label">Session Allocation</div>
-        <div class="value"><span id="budgetSpent">$0.00</span> / <span id="budgetTotal">$10.00</span></div>
+        <div class="label">Session Budget <button class="info-button" type="button" data-help="budget" aria-label="About the session budget">i</button></div>
+        <div class="value"><span id="budgetRemaining">$10.00</span> remaining</div>
         <div class="bar"><div id="budgetFill" class="fill"></div></div>
-        <div id="budgetMeta" class="meta">Ops $0.00 | Context $0.00 | Remaining $10.00 | Rate $0.01 / token</div>
+        <div id="budgetMeta" class="meta">Actions $0.00 · Text and capacity $0.00</div>
       </div>
       <div class="stat-card full">
-        <div class="label">Operations</div>
-        <div class="value"><span id="operationsUsed">0</span> / <span id="operationsMax">0</span></div>
-        <div class="bar"><div id="operationsFill" class="fill"></div></div>
-        <div id="operationsMeta" class="meta">Operations available under current budget.</div>
-      </div>
-      <div class="stat-card full">
-        <div class="label">Context Window</div>
+        <div class="label">Context Window <button class="info-button" type="button" data-help="context" aria-label="About the context window">i</button></div>
         <div class="value"><span id="contextUsed">0</span> / <span id="contextMax">500</span></div>
         <div class="bar"><div id="contextFill" class="fill"></div></div>
         <div id="contextMeta" class="meta">Task 0 | Notes 0 | Draft 0</div>
+      </div>
       </div>
     </section>
 
     <section id="assignedTaskSection" class="panel section">
       <div class="section-header">
         <h2>Assigned Task <button class="info-button" type="button" data-help="request" aria-label="About your assigned task">i</button></h2>
-        <span class="hint">Randomly assigned when the session starts</span>
+        <span class="hint">A requester needs your answer</span>
       </div>
       <div class="goal-block">
         <div class="field-label">Requester Question</div>
@@ -94,10 +104,6 @@
       <div class="goal-block">
         <div class="field-label">Operator Work Order</div>
         <div id="workOrderDisplay" class="goal-value muted">No work order assigned yet.</div>
-      </div>
-      <div class="goal-block">
-        <div class="field-label">Session Allocation</div>
-        <div id="budgetDisplay" class="goal-value">Fixed by requester for this run.</div>
       </div>
     </section>
 
@@ -138,24 +144,21 @@
     <section class="panel section" id="deliverableSection">
       <div class="section-header">
         <h2>Deliverable <button class="info-button" type="button" data-help="deliverable" aria-label="About the deliverable">i</button></h2>
-        <span class="hint">Build your answer from retained evidence</span>
+        <span class="hint">Answer the requester’s question using your notes</span>
       </div>
       <div class="deliverable-workspace">
         <div class="field-label">Draft</div>
         <textarea id="draftInput" rows="12" placeholder="Draft output here..."></textarea>
       </div>
       <div class="button-row">
-        <button id="commitDraftBtn" class="secondary">Commit Draft</button>
+        <button id="commitDraftBtn">Commit Draft</button>
       </div>
     </section>
 
-    <section id="traceSection" class="panel section">
-      <div class="section-header">
-        <h2>Runtime Trace</h2>
-      </div>
+    <details id="traceSection" class="panel trace-panel">
+      <summary>Runtime Trace <button class="info-button" type="button" data-help="trace" aria-label="About the runtime trace">i</button></summary>
       <div id="traceList" class="trace-list"></div>
-    </section>
-
+    </details>
 
     <section id="exportSection" class="panel section hidden">
       <div class="section-header">
@@ -193,6 +196,11 @@
 
   <div id="sideToast" class="side-toast" role="status" aria-live="polite"></div>
 
+  <div id="featureHelp" popover="auto" role="tooltip" class="feature-help">
+    <strong id="featureHelpTitle"></strong>
+    <p id="featureHelpBody"></p>
+  </div>
+
   <dialog id="settingsDialog" class="utility-dialog" aria-labelledby="settingsTitle">
     <div class="utility-heading"><div><div class="eyebrow">Workspace settings</div><h2 id="settingsTitle">Your research requests</h2></div><button id="closeSettingsBtn" class="secondary" type="button" aria-label="Close settings">Close</button></div>
     <p class="utility-intro">Supply the questions. Let Human Mode assign the work.</p>
@@ -209,11 +217,6 @@
       <div class="utility-footer"><button type="submit" id="saveSettingsBtn">Save Settings</button></div>
     </form>
   </dialog>
-
-  <div id="featureHelp" popover="auto" role="tooltip" class="feature-help">
-    <strong id="featureHelpTitle"></strong>
-    <p id="featureHelpBody"></p>
-  </div>
 
   <dialog id="tutorialDialog" class="section-tour-dialog" aria-modal="true" aria-labelledby="tutorialTitle">
       <div class="tour-guide">
