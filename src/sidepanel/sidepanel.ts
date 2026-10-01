@@ -1,3 +1,4 @@
+import { initGuidance } from './guidance';
 import {
   AgentSession,
   BroadcastMessage,
@@ -45,10 +46,10 @@ let noteUiState = new Map<string, NoteUiState>();
 let exportPayload: SessionExport | null = null;
 let contextExceeded = false;
 let lastSessionRunId = '';
+const retiredSessionRunIds = new Set<string>();
 let sideToastTimer = 0;
 let onboardingStepIndex = 0;
 let onboardingVisible = false;
-const INTERNAL_NOTES_PASTE_DISABLED_MESSAGE = 'Paste is disabled during note-taking.';
 
 const els = {
   appRoot: byId<HTMLElement>('appRoot'),
@@ -116,11 +117,10 @@ void init();
 async function init(): Promise<void> {
   bindEvents();
   initOnboarding();
+  initGuidance(() => { if (onboardingVisible) dismissOnboarding(); }, showSideToast);
   chrome.runtime.onMessage.addListener((message: BroadcastMessage) => {
     if (message?.type === 'SESSION_UPDATED') {
-      session = message.session;
-      syncUiState();
-      render();
+      adoptSession(message.session);
       return;
     }
     if (message?.type === 'SHOW_SIDE_TOAST' && message.message) {
@@ -129,9 +129,7 @@ async function init(): Promise<void> {
   });
 
   const response = await sendMessage({ type: 'GET_SESSION' });
-  session = response?.session || null;
-  syncUiState();
-  render();
+  adoptSession(response?.session || null);
 }
 
 function renderPdfCapabilityNotice(candidateSession: AgentSession): void {
@@ -244,9 +242,7 @@ function handleResponse(response: RuntimeResponse | null): void {
     return;
   }
   if (response.session) {
-    session = response.session;
-    syncUiState();
-    render();
+    adoptSession(response.session);
   }
 }
 
@@ -264,6 +260,7 @@ function syncUiState(): void {
   if (!session) return;
   const runId = session.sessionRunId || '';
   if (runId !== lastSessionRunId) {
+    if (lastSessionRunId) retiredSessionRunIds.add(lastSessionRunId);
     lastSessionRunId = runId;
     resetLocalSessionUi();
   }
@@ -641,7 +638,6 @@ function renderNotes(): void {
     meta.textContent = `${item.sourceTitle || 'Current page'} | ${countWords(noteTextForMeta)} words | ${roughTokenCount(noteTextForMeta)} tokens`;
     readonly.textContent = note?.committedText || '';
     textarea.value = item.editing ? (item.draftText || note?.committedText || '') : '';
-    bindInternalNotesPasteGuard(textarea);
     const editing = !!item.editing;
     node.classList.toggle('editing', editing);
     readonly.classList.toggle('hidden', editing);
@@ -702,20 +698,7 @@ function renderNotes(): void {
   }
 }
 
-function bindInternalNotesPasteGuard(textarea: HTMLTextAreaElement): void {
-  textarea.addEventListener('keydown', event => {
-    const key = event.key.toLowerCase();
-    const isPasteShortcut = (event.ctrlKey || event.metaKey) && key === 'v';
-    const isShiftInsert = event.shiftKey && key === 'insert';
-    if (!isPasteShortcut && !isShiftInsert) return;
-    event.preventDefault();
-    showSideToast(INTERNAL_NOTES_PASTE_DISABLED_MESSAGE, 'error');
-  });
-  textarea.addEventListener('paste', event => {
-    event.preventDefault();
-    showSideToast(INTERNAL_NOTES_PASTE_DISABLED_MESSAGE, 'error');
-  });
-}
+
 
 function renderDeliverableNotes(): void {
   if (!session) return;
@@ -818,4 +801,11 @@ function byId<T extends HTMLElement>(id: string): T {
   const el = document.getElementById(id);
   if (!el) throw new Error(`Missing element #${id}`);
   return el as T;
+}
+
+function adoptSession(next: AgentSession | null): void {
+  if (!next || retiredSessionRunIds.has(next.sessionRunId)) return;
+  session = next;
+  syncUiState();
+  render();
 }

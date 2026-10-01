@@ -51,7 +51,7 @@ export const TraceKind = {
 
 export type TraceKind = (typeof TraceKind)[keyof typeof TraceKind];
 
-export const DEFAULT_CONTEXT_MAX = 750;
+export const DEFAULT_CONTEXT_MAX = 500;
 export const DEFAULT_BUDGET_CENTS = 1000;
 export const CONTEXT_WARNING_THRESHOLD = 0.85;
 export const CONTEXT_EXPANSION_TOKENS = 100;

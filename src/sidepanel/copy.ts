@@ -101,3 +101,8 @@ export const responseMessages: Record<string, string> = {
   EMPTY_NOTE: 'Add note text before committing.',
   PDF_TOOL_UNAVAILABLE: PDF_TOOL_UNAVAILABLE_MESSAGE
 };
+
+export const tutorialTask = {
+  requesterQuestion: 'How can a small museum preserve its audio recordings?',
+  workOrder: 'Compare practical approaches to preserving recordings and recommend priorities for a small museum'
+};

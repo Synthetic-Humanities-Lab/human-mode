@@ -1,5 +1,5 @@
+import { CONTEXT_EXPANSION_COST_CENTS, CONTEXT_EXPANSION_TOKENS, DEFAULT_CONTEXT_MAX, getContextBreakdown, Phase, SessionState, STORAGE_KEY, TASK_BANK_SETTINGS_KEY, TraceKind } from '../../src/shared';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Phase, SessionState, STORAGE_KEY } from '../../src/shared';
 import { createChromeMock, dispatchRuntimeMessage } from '../helpers/chrome';
 
 describe('background service worker', () => {
@@ -248,10 +248,102 @@ describe('background service worker', () => {
     ]);
 
     const afterNavigation = await dispatchRuntimeMessage(harness, { type: 'GET_SESSION' });
-    expect(afterNavigation.session?.phase).toBe(Phase.INSPECTION);
+    expect(afterNavigation.session?.phase).toBe(Phase.RETRIEVAL);
     expect(afterNavigation.session?.activeUrl).toBe(sourceUrl);
     expect(afterNavigation.session?.activeTitle).toBe(sourceTitle);
     expect(afterNavigation.session?.operationsUsed).toBe((started.session?.operationsUsed || 0) + 1);
+  });
+
+  it('preserves both navigations when tab updates arrive together', async () => {
+    const harness = createChromeMock({ tabs: [{ id: 1, url: 'https://example.com', title: 'Landing', active: true }] });
+    vi.stubGlobal('chrome', harness.chrome);
+    await import('../../src/background/service-worker');
+    const started = await dispatchRuntimeMessage(harness, { type: 'START_SESSION' }, { tab: { id: 1 } as chrome.tabs.Tab });
+    await harness.events.webNavigationOnCommitted.trigger({
+      tabId: 1, url: started.session!.activeUrl, frameId: 0, transitionType: 'generated', transitionQualifiers: []
+    } as unknown as chrome.webNavigation.WebNavigationTransitionCallbackDetails);
+    await Promise.all(['a', 'b'].map(source => harness.events.tabsOnUpdated.trigger(
+      1, { status: 'complete', url: `https://example.com/${source}` },
+      { id: 1, url: `https://example.com/${source}`, title: source, active: true } as chrome.tabs.Tab
+    )));
+    const after = await dispatchRuntimeMessage(harness, { type: 'GET_SESSION' });
+    expect(after.session?.operationsUsed).toBe(started.session!.operationsUsed + 2);
+    expect(after.session?.navigationChain).toContain('https://example.com/a');
+    expect(after.session?.navigationChain).toContain('https://example.com/b');
+    expect(after.session?.activeUrl).toBe('https://example.com/b');
+  });
+
+  it('uses saved custom tasks on the next run and preserves the bank when an invalid save is rejected', async () => {
+    const harness = createChromeMock({ tabs: [{ id: 1, url: 'https://example.com', title: 'Landing', active: true }] });
+    vi.stubGlobal('chrome', harness.chrome);
+    await import('../../src/background/service-worker');
+    const task = { id: 'my-task', requesterQuestion: 'How should we preserve audio?', workOrder: 'Compare practical preservation steps', searchQuery: 'How should we preserve audio?' };
+    const saved = await dispatchRuntimeMessage(harness, { type: 'SAVE_TASK_BANK_SETTINGS', payload: { useCustomTasks: true, tasks: [task] } });
+    expect(saved.ok).toBe(true);
+    const started = await dispatchRuntimeMessage(harness, { type: 'START_SESSION' }, { tab: { id: 1 } as chrome.tabs.Tab });
+    expect(started.session?.requesterQuestion).toBe(task.requesterQuestion);
+    expect(started.session?.taskSearchQuery).toBe(task.searchQuery);
+    expect(harness.updates.at(-1)?.updateProperties.url).toBe(`https://www.google.com/search?q=${encodeURIComponent(task.requesterQuestion)}`);
+    const invalid = await dispatchRuntimeMessage(harness, { type: 'SAVE_TASK_BANK_SETTINGS', payload: { useCustomTasks: true, tasks: [{ ...task, workOrder: '' }] } });
+    expect(invalid.ok).toBe(false);
+    expect(harness.store[TASK_BANK_SETTINGS_KEY]).toEqual(saved.settings);
+    await dispatchRuntimeMessage(harness, { type: 'SAVE_TASK_BANK_SETTINGS', payload: { useCustomTasks: false, tasks: [task] } });
+    expect((await dispatchRuntimeMessage(harness, { type: 'GET_SESSION' })).session?.taskBankTaskId).toBe('my-task');
+    await dispatchRuntimeMessage(harness, { type: 'ABORT_SESSION' });
+    const restarted = await dispatchRuntimeMessage(harness, { type: 'START_SESSION' }, { tab: { id: 1 } as chrome.tabs.Tab });
+    expect(restarted.session?.taskBankTaskId).not.toBe('my-task');
+    expect((await dispatchRuntimeMessage(harness, { type: 'GET_TASK_BANK_SETTINGS' })).settings?.tasks).toEqual([task]);
+  });
+
+  it('rejects context expansion without changing resources when the budget is too low', async () => {
+    const harness = createChromeMock({ tabs: [{ id: 1, url: 'https://example.com', title: 'Landing', active: true }] });
+    vi.stubGlobal('chrome', harness.chrome);
+    await import('../../src/background/service-worker');
+    const started = await dispatchRuntimeMessage(harness, { type: 'START_SESSION' }, { tab: { id: 1 } as chrome.tabs.Tab });
+    const before = { ...started.session!, spendCents: started.session!.budgetCents - CONTEXT_EXPANSION_COST_CENTS + 1 };
+    harness.store[STORAGE_KEY] = before;
+    const expanded = await dispatchRuntimeMessage(harness, { type: 'EXPAND_CONTEXT' });
+    expect(expanded).toMatchObject({ ok: false, error: 'OUT_OF_BUDGET', session: before });
+    expect(harness.store[STORAGE_KEY]).toEqual(before);
+  });
+
+  it('stays in Collect while visiting sources and advances to Rank only after finalizing', async () => {
+    const harness = createChromeMock({
+      tabs: [{ id: 1, url: 'https://example.com', title: 'Landing', active: true }]
+    });
+    vi.stubGlobal('chrome', harness.chrome);
+    await import('../../src/background/service-worker');
+
+    const started = await dispatchRuntimeMessage(harness, { type: 'START_SESSION' }, { tab: { id: 1 } as chrome.tabs.Tab });
+    const searchUrl = started.session?.activeUrl || '';
+    await harness.events.webNavigationOnCommitted.trigger({
+      tabId: 1, url: searchUrl, transitionType: 'generated', transitionQualifiers: [], frameId: 0
+    } as unknown as chrome.webNavigation.WebNavigationTransitionCallbackDetails);
+
+    const sourceUrl = 'https://example.com/source-a';
+    await harness.events.tabsOnUpdated.trigger(1, { status: 'complete', url: sourceUrl },
+      { id: 1, url: sourceUrl, title: 'Source A', active: true } as chrome.tabs.Tab);
+    expect((await dispatchRuntimeMessage(harness, { type: 'GET_SESSION' })).session?.phase).toBe(Phase.RETRIEVAL);
+
+    const added = await dispatchRuntimeMessage(harness, {
+      type: 'ADD_RANK_CANDIDATE', payload: { url: sourceUrl, title: 'Source A' }
+    });
+    expect(added.session?.phase).toBe(Phase.RETRIEVAL);
+    await harness.events.webNavigationOnCommitted.trigger({
+      tabId: 1, url: searchUrl, transitionType: 'generated', transitionQualifiers: [], frameId: 0
+    } as unknown as chrome.webNavigation.WebNavigationTransitionCallbackDetails);
+    await harness.events.tabsOnUpdated.trigger(1, { status: 'complete', url: searchUrl },
+      { id: 1, url: searchUrl, title: 'Search results', active: true } as chrome.tabs.Tab);
+    expect((await dispatchRuntimeMessage(harness, { type: 'GET_SESSION' })).session?.phase).toBe(Phase.RETRIEVAL);
+
+    const finalized = await dispatchRuntimeMessage(harness, { type: 'FINALIZE_RANK_CANDIDATES' });
+    expect(finalized.session?.phase).toBe(Phase.INSPECTION);
+    await harness.events.tabsOnUpdated.trigger(1, { status: 'complete', url: sourceUrl },
+      { id: 1, url: sourceUrl, title: 'Source A', active: true } as chrome.tabs.Tab);
+    expect((await dispatchRuntimeMessage(harness, { type: 'GET_SESSION' })).session?.phase).toBe(Phase.INSPECTION);
+    await harness.events.tabsOnUpdated.trigger(1, { status: 'complete', url: searchUrl },
+      { id: 1, url: searchUrl, title: 'Search results', active: true } as chrome.tabs.Tab);
+    expect((await dispatchRuntimeMessage(harness, { type: 'GET_SESSION' })).session?.phase).toBe(Phase.INSPECTION);
   });
 
 });

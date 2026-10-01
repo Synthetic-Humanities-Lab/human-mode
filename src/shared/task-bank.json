@@ -2,301 +2,251 @@
   {
     "id": "task_001",
     "requesterQuestion": "How do museums write object labels?",
-    "workOrder": "Draft a short source-backed brief on how museums write object labels.",
-    "searchQuery": "how do museums write object labels"
+    "workOrder": "Draft a short source-backed brief on how museums write object labels."
   },
   {
     "id": "task_002",
     "requesterQuestion": "How do you plan an oral history interview?",
-    "workOrder": "Draft a short source-backed brief on planning an oral history interview.",
-    "searchQuery": "how to plan an oral history interview"
+    "workOrder": "Draft a short source-backed brief on planning an oral history interview."
   },
   {
     "id": "task_003",
     "requesterQuestion": "How do public monuments shape historical memory?",
-    "workOrder": "Draft a short source-backed brief on how public monuments shape historical memory.",
-    "searchQuery": "how do public monuments shape historical memory"
+    "workOrder": "Draft a short source-backed brief on how public monuments shape historical memory."
   },
   {
     "id": "task_004",
     "requesterQuestion": "How do adaptations change stories across media?",
-    "workOrder": "Draft a short source-backed brief on how adaptations change stories across media.",
-    "searchQuery": "how do adaptations change stories across media"
+    "workOrder": "Draft a short source-backed brief on how adaptations change stories across media."
   },
   {
     "id": "task_005",
     "requesterQuestion": "How do archives describe born-digital collections?",
-    "workOrder": "Draft a short source-backed brief on how archives describe born-digital collections.",
-    "searchQuery": "how do archives describe born-digital collections"
+    "workOrder": "Draft a short source-backed brief on how archives describe born-digital collections."
   },
   {
     "id": "task_006",
     "requesterQuestion": "How do documentary projects clear rights for reused media?",
-    "workOrder": "Draft a short source-backed brief on how documentary projects clear rights for reused media.",
-    "searchQuery": "how do documentary projects clear rights for reused media"
+    "workOrder": "Draft a short source-backed brief on how documentary projects clear rights for reused media."
   },
   {
     "id": "task_007",
     "requesterQuestion": "How do exhibitions structure interpretive wall text?",
-    "workOrder": "Draft a short source-backed brief on how exhibitions structure interpretive wall text.",
-    "searchQuery": "how do exhibitions structure interpretive wall text"
+    "workOrder": "Draft a short source-backed brief on how exhibitions structure interpretive wall text."
   },
   {
     "id": "task_008",
     "requesterQuestion": "How do researchers build a literature review matrix?",
-    "workOrder": "Draft a short source-backed brief on building a literature review matrix.",
-    "searchQuery": "how to build a literature review matrix"
+    "workOrder": "Draft a short source-backed brief on building a literature review matrix."
   },
   {
     "id": "task_009",
     "requesterQuestion": "How do games teach players without explicit tutorials?",
-    "workOrder": "Draft a short source-backed brief on how games teach players without explicit tutorials.",
-    "searchQuery": "how do games teach players without tutorials"
+    "workOrder": "Draft a short source-backed brief on how games teach players without explicit tutorials."
   },
   {
     "id": "task_010",
     "requesterQuestion": "What makes game UI accessible?",
-    "workOrder": "Draft a short source-backed brief on accessibility considerations in game UI.",
-    "searchQuery": "what makes game ui accessible"
+    "workOrder": "Draft a short source-backed brief on accessibility considerations in game UI."
   },
   {
     "id": "task_011",
     "requesterQuestion": "How does level design guide player attention?",
-    "workOrder": "Draft a short source-backed brief on how level design guides player attention.",
-    "searchQuery": "how does level design guide player attention"
+    "workOrder": "Draft a short source-backed brief on how level design guides player attention."
   },
   {
     "id": "task_012",
     "requesterQuestion": "How do designers use playtesting feedback?",
-    "workOrder": "Draft a short source-backed brief on how playtesting feedback is collected and used.",
-    "searchQuery": "how do designers use playtesting feedback"
+    "workOrder": "Draft a short source-backed brief on how playtesting feedback is collected and used."
   },
   {
     "id": "task_013",
     "requesterQuestion": "How do puzzle games signal rules without text?",
-    "workOrder": "Draft a short source-backed brief on how puzzle games signal rules without relying on text.",
-    "searchQuery": "how do puzzle games signal rules without text"
+    "workOrder": "Draft a short source-backed brief on how puzzle games signal rules without relying on text."
   },
   {
     "id": "task_014",
     "requesterQuestion": "How do multiplayer games teach social norms to players?",
-    "workOrder": "Draft a short source-backed brief on how multiplayer games teach social norms to players.",
-    "searchQuery": "how do multiplayer games teach social norms to players"
+    "workOrder": "Draft a short source-backed brief on how multiplayer games teach social norms to players."
   },
   {
     "id": "task_015",
     "requesterQuestion": "How do level designers use lighting to guide navigation?",
-    "workOrder": "Draft a short source-backed brief on how level designers use lighting to guide player navigation.",
-    "searchQuery": "how do level designers use lighting to guide player navigation"
+    "workOrder": "Draft a short source-backed brief on how level designers use lighting to guide player navigation."
   },
   {
     "id": "task_016",
     "requesterQuestion": "How do designers structure onboarding for complex strategy games?",
-    "workOrder": "Draft a short source-backed brief on onboarding players in complex strategy games.",
-    "searchQuery": "how do designers structure onboarding for complex strategy games"
+    "workOrder": "Draft a short source-backed brief on onboarding players in complex strategy games."
   },
   {
     "id": "task_017",
     "requesterQuestion": "How can students evaluate online sources?",
-    "workOrder": "Draft a short source-backed brief on how students can evaluate online sources.",
-    "searchQuery": "how can students evaluate online sources"
+    "workOrder": "Draft a short source-backed brief on how students can evaluate online sources."
   },
   {
     "id": "task_018",
     "requesterQuestion": "How do teachers structure peer review?",
-    "workOrder": "Draft a short source-backed brief on how peer review activities are structured in classrooms.",
-    "searchQuery": "how do teachers structure peer review"
+    "workOrder": "Draft a short source-backed brief on how peer review activities are structured in classrooms."
   },
   {
     "id": "task_019",
     "requesterQuestion": "How are rubrics used in project-based learning?",
-    "workOrder": "Draft a short source-backed brief on how rubrics are used in project-based learning.",
-    "searchQuery": "how are rubrics used in project-based learning"
+    "workOrder": "Draft a short source-backed brief on how rubrics are used in project-based learning."
   },
   {
     "id": "task_020",
     "requesterQuestion": "How is media literacy taught in classrooms?",
-    "workOrder": "Draft a short source-backed brief on how media literacy is taught in classrooms.",
-    "searchQuery": "how is media literacy taught in classrooms"
+    "workOrder": "Draft a short source-backed brief on how media literacy is taught in classrooms."
   },
   {
     "id": "task_021",
     "requesterQuestion": "How do public libraries support digital access?",
-    "workOrder": "Draft a short source-backed brief on how public libraries support digital access.",
-    "searchQuery": "how do public libraries support digital access"
+    "workOrder": "Draft a short source-backed brief on how public libraries support digital access."
   },
   {
     "id": "task_022",
     "requesterQuestion": "How are community gardens organized?",
-    "workOrder": "Draft a short source-backed brief on how community gardens are organized.",
-    "searchQuery": "how are community gardens organized"
+    "workOrder": "Draft a short source-backed brief on how community gardens are organized."
   },
   {
     "id": "task_023",
     "requesterQuestion": "How do food banks coordinate donations?",
-    "workOrder": "Draft a short source-backed brief on how local food banks coordinate donations.",
-    "searchQuery": "how do food banks coordinate donations"
+    "workOrder": "Draft a short source-backed brief on how local food banks coordinate donations."
   },
   {
     "id": "task_024",
     "requesterQuestion": "How can tenants document maintenance issues?",
-    "workOrder": "Draft a short source-backed brief on how tenants can document apartment maintenance issues.",
-    "searchQuery": "how can tenants document maintenance issues"
+    "workOrder": "Draft a short source-backed brief on how tenants can document apartment maintenance issues."
   },
   {
     "id": "task_025",
     "requesterQuestion": "Why do urban heat islands happen?",
-    "workOrder": "Draft a short source-backed brief on why urban heat islands occur.",
-    "searchQuery": "why do urban heat islands happen"
+    "workOrder": "Draft a short source-backed brief on why urban heat islands occur."
   },
   {
     "id": "task_026",
     "requesterQuestion": "How do citizen science projects collect data?",
-    "workOrder": "Draft a short source-backed brief on how citizen science projects collect data.",
-    "searchQuery": "how do citizen science projects collect data"
+    "workOrder": "Draft a short source-backed brief on how citizen science projects collect data."
   },
   {
     "id": "task_027",
     "requesterQuestion": "How does misinformation spread online?",
-    "workOrder": "Draft a short source-backed brief on how misinformation spreads online.",
-    "searchQuery": "how does misinformation spread online"
+    "workOrder": "Draft a short source-backed brief on how misinformation spreads online."
   },
   {
     "id": "task_028",
     "requesterQuestion": "How do local governments communicate boil water notices?",
-    "workOrder": "Draft a short source-backed brief on how local governments communicate boil water notices.",
-    "searchQuery": "how do local governments communicate boil water notices"
+    "workOrder": "Draft a short source-backed brief on how local governments communicate boil water notices."
   },
   {
     "id": "task_029",
     "requesterQuestion": "How do editors establish a scholarly edition?",
-    "workOrder": "Draft a short source-backed brief on how do editors establish a scholarly edition.",
-    "searchQuery": "how editors establish a scholarly edition"
+    "workOrder": "Draft a short source-backed brief on how do editors establish a scholarly edition."
   },
   {
     "id": "task_030",
     "requesterQuestion": "How do historians use footnotes to make an argument?",
-    "workOrder": "Draft a short source-backed brief on how do historians use footnotes to make an argument.",
-    "searchQuery": "how historians use footnotes to make an argument"
+    "workOrder": "Draft a short source-backed brief on how do historians use footnotes to make an argument."
   },
   {
     "id": "task_031",
     "requesterQuestion": "How do close readings differ from summaries?",
-    "workOrder": "Draft a short source-backed brief on how do close readings differ from summaries.",
-    "searchQuery": "how close reading differs from summary"
+    "workOrder": "Draft a short source-backed brief on how do close readings differ from summaries."
   },
   {
     "id": "task_032",
     "requesterQuestion": "How do translators handle untranslatable words?",
-    "workOrder": "Draft a short source-backed brief on how do translators handle untranslatable words.",
-    "searchQuery": "how translators handle untranslatable words"
+    "workOrder": "Draft a short source-backed brief on how do translators handle untranslatable words."
   },
   {
     "id": "task_033",
     "requesterQuestion": "How do film scholars analyze a shot?",
-    "workOrder": "Draft a short source-backed brief on how do film scholars analyze a shot.",
-    "searchQuery": "how film scholars analyze a shot"
+    "workOrder": "Draft a short source-backed brief on how do film scholars analyze a shot."
   },
   {
     "id": "task_034",
     "requesterQuestion": "How do captions shape the meaning of a photograph?",
-    "workOrder": "Draft a short source-backed brief on how do captions shape the meaning of a photograph.",
-    "searchQuery": "how captions shape the meaning of a photograph"
+    "workOrder": "Draft a short source-backed brief on how do captions shape the meaning of a photograph."
   },
   {
     "id": "task_035",
     "requesterQuestion": "How do archives decide what to keep?",
-    "workOrder": "Draft a short source-backed brief on how do archives decide what to keep.",
-    "searchQuery": "how archives decide what to keep"
+    "workOrder": "Draft a short source-backed brief on how do archives decide what to keep."
   },
   {
     "id": "task_036",
     "requesterQuestion": "How do researchers cite oral sources?",
-    "workOrder": "Draft a short source-backed brief on how do researchers cite oral sources.",
-    "searchQuery": "how researchers cite oral sources"
+    "workOrder": "Draft a short source-backed brief on how do researchers cite oral sources."
   },
   {
     "id": "task_037",
     "requesterQuestion": "How do museums handle repatriation claims?",
-    "workOrder": "Draft a short source-backed brief on how do museums handle repatriation claims.",
-    "searchQuery": "how museums handle repatriation claims"
+    "workOrder": "Draft a short source-backed brief on how do museums handle repatriation claims."
   },
   {
     "id": "task_038",
     "requesterQuestion": "How do mapmakers choose what to leave out?",
-    "workOrder": "Draft a short source-backed brief on how do mapmakers choose what to leave out.",
-    "searchQuery": "how mapmakers choose what to leave out"
+    "workOrder": "Draft a short source-backed brief on how do mapmakers choose what to leave out."
   },
   {
     "id": "task_039",
     "requesterQuestion": "How do sound archives preserve field recordings?",
-    "workOrder": "Draft a short source-backed brief on how do sound archives preserve field recordings.",
-    "searchQuery": "how sound archives preserve field recordings"
+    "workOrder": "Draft a short source-backed brief on how do sound archives preserve field recordings."
   },
   {
     "id": "task_040",
     "requesterQuestion": "How do scholars date an undated manuscript?",
-    "workOrder": "Draft a short source-backed brief on how do scholars date an undated manuscript.",
-    "searchQuery": "how scholars date an undated manuscript"
+    "workOrder": "Draft a short source-backed brief on how do scholars date an undated manuscript."
   },
   {
     "id": "task_041",
     "requesterQuestion": "How do critics distinguish adaptation from appropriation?",
-    "workOrder": "Draft a short source-backed brief on how do critics distinguish adaptation from appropriation.",
-    "searchQuery": "adaptation versus appropriation criticism"
+    "workOrder": "Draft a short source-backed brief on how do critics distinguish adaptation from appropriation."
   },
   {
     "id": "task_042",
     "requesterQuestion": "How do communities write local histories?",
-    "workOrder": "Draft a short source-backed brief on how do communities write local histories.",
-    "searchQuery": "how communities write local histories"
+    "workOrder": "Draft a short source-backed brief on how do communities write local histories."
   },
   {
     "id": "task_043",
     "requesterQuestion": "How do libraries classify contested subjects?",
-    "workOrder": "Draft a short source-backed brief on how do libraries classify contested subjects.",
-    "searchQuery": "how libraries classify contested subjects"
+    "workOrder": "Draft a short source-backed brief on how do libraries classify contested subjects."
   },
   {
     "id": "task_044",
     "requesterQuestion": "How do zines circulate outside bookstores?",
-    "workOrder": "Draft a short source-backed brief on how do zines circulate outside bookstores.",
-    "searchQuery": "how zines circulate outside bookstores"
+    "workOrder": "Draft a short source-backed brief on how do zines circulate outside bookstores."
   },
   {
     "id": "task_045",
     "requesterQuestion": "How do subtitles change a film for new audiences?",
-    "workOrder": "Draft a short source-backed brief on how do subtitles change a film for new audiences.",
-    "searchQuery": "how subtitles change a film"
+    "workOrder": "Draft a short source-backed brief on how do subtitles change a film for new audiences."
   },
   {
     "id": "task_046",
     "requesterQuestion": "How do researchers keep a source log?",
-    "workOrder": "Draft a short source-backed brief on how do researchers keep a source log.",
-    "searchQuery": "how researchers keep a source log"
+    "workOrder": "Draft a short source-backed brief on how do researchers keep a source log."
   },
   {
     "id": "task_047",
     "requesterQuestion": "How do classrooms discuss primary sources?",
-    "workOrder": "Draft a short source-backed brief on how do classrooms discuss primary sources.",
-    "searchQuery": "how classrooms discuss primary sources"
+    "workOrder": "Draft a short source-backed brief on how do classrooms discuss primary sources."
   },
   {
     "id": "task_048",
     "requesterQuestion": "How do public historians write for non-specialists?",
-    "workOrder": "Draft a short source-backed brief on how do public historians write for non-specialists.",
-    "searchQuery": "how public historians write for non-specialists"
+    "workOrder": "Draft a short source-backed brief on how do public historians write for non-specialists."
   },
   {
     "id": "task_049",
     "requesterQuestion": "How do game archives preserve playable software?",
-    "workOrder": "Draft a short source-backed brief on how do game archives preserve playable software.",
-    "searchQuery": "how game archives preserve playable software"
+    "workOrder": "Draft a short source-backed brief on how do game archives preserve playable software."
   },
   {
     "id": "task_050",
     "requesterQuestion": "How do designers document a failed prototype?",
-    "workOrder": "Draft a short source-backed brief on how do designers document a failed prototype.",
-    "searchQuery": "how designers document a failed prototype"
+    "workOrder": "Draft a short source-backed brief on how do designers document a failed prototype."
   }
 ]

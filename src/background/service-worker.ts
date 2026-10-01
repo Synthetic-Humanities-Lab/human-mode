@@ -1,3 +1,4 @@
+import { TaskBankSettings, TASK_BANK_SETTINGS_KEY, TASK_BANK, parseTaskBankSettings } from '../shared';
 import {
   AgentSession,
   CONTEXT_EXPANSION_COST_CENTS,
@@ -45,7 +46,9 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  void handleMessage(message as RuntimeMessage, sender).then(sendResponse);
+  void handleMessage(message as RuntimeMessage, sender).then(sendResponse).catch(error => {
+    sendResponse({ ok: false, error: error instanceof Error ? error.message : 'Could not complete this action' });
+  });
   return true;
 });
 
@@ -273,6 +276,13 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
   switch (message?.type) {
     case 'GET_SESSION':
       return { ok: true, session: await getSession() };
+    case 'GET_TASK_BANK_SETTINGS':
+      return { ok: true, settings: await getTaskBankSettings() };
+    case 'SAVE_TASK_BANK_SETTINGS': {
+      const settings = parseTaskBankSettings(message.payload);
+      await chrome.storage.local.set({ [TASK_BANK_SETTINGS_KEY]: settings });
+      return { ok: true, settings };
+    }
     case 'START_SESSION':
       return startSession(sender);
     case 'BEGIN_NOTE_CAPTURE':
@@ -433,7 +443,8 @@ async function startSession(sender: chrome.runtime.MessageSender): Promise<Runti
   }
   if (!activeTab?.id) return { ok: false, error: 'NO_ACTIVE_TAB', session: await getSession() };
 
-  const assignedTask = pickRandomTask();
+  const settings = await getTaskBankSettings();
+  const assignedTask = pickRandomTask(settings.useCustomTasks ? settings.tasks : TASK_BANK);
   if (!assignedTask) return { ok: false, error: 'TASK_BANK_EMPTY', session: await getSession() };
   const searchUrl = buildGoogleSearchUrl(assignedTask.searchQuery);
 
@@ -445,7 +456,6 @@ async function startSession(sender: chrome.runtime.MessageSender): Promise<Runti
   session.task = assignedTask.workOrder;
   session.taskBankTaskId = assignedTask.id;
   session.taskSearchQuery = assignedTask.searchQuery;
-  session.currentSearchQuery = assignedTask.searchQuery;
   session.activeTabId = activeTab.id;
   session.activeUrl = searchUrl;
   session.activeTitle = `Google results for ${assignedTask.workOrder}`;
@@ -490,15 +500,12 @@ async function syncActivePageFromTab(session: AgentSession, tabId: number, url: 
       await persistAndBroadcastSession(session);
       return;
     }
-    session.currentSearchQuery = query;
-    session.phase = Phase.RETRIEVAL;
   } else {
     const spent = spendOperation(session, TraceKind.OPEN_PAGE, `Opened page: ${title || getPageLabel(url)}`);
     if (!spent.ok) {
       await persistAndBroadcastSession(session);
       return;
     }
-    session.phase = Phase.INSPECTION;
   }
 
   pushNavigation(session, url);
@@ -791,6 +798,7 @@ async function finalizeRankCandidates(): Promise<RuntimeResponse> {
   if (!session.rankCandidates.length) return { ok: false, error: 'NO_RANK_CANDIDATES', session };
   reconcileNoteCaptureRankOrder(session);
   session.candidateSetFinalized = true;
+  session.phase = Phase.INSPECTION;
   logTrace(session, TraceKind.RANK_CANDIDATE_FINALIZE, `Finalized candidate set (${session.rankCandidates.length} total)`);
   await persistAndBroadcastSession(session);
   return { ok: true, session };
@@ -818,4 +826,11 @@ async function updateContentStatus(
 
 function isHydratedStorage(value: unknown): boolean {
   return typeof value === 'object' && value !== null && 'sessionRunId' in value && 'draft' in value;
+}
+
+async function getTaskBankSettings(): Promise<TaskBankSettings> {
+  const stored = await chrome.storage.local.get(TASK_BANK_SETTINGS_KEY);
+  return stored[TASK_BANK_SETTINGS_KEY] === undefined
+    ? { useCustomTasks: false, tasks: [] }
+    : parseTaskBankSettings(stored[TASK_BANK_SETTINGS_KEY]);
 }

@@ -1,9 +1,12 @@
+import { TaskBankSettings } from './task-bank';
 import { AgentSession, SessionExport } from './types';
 
 export const PDF_TOOL_UNAVAILABLE_MESSAGE = 'You do not have access to the PDF tool.';
 
 export type RuntimeMessage =
   | { type: 'GET_SESSION' }
+  | { type: 'GET_TASK_BANK_SETTINGS' }
+  | { type: 'SAVE_TASK_BANK_SETTINGS'; payload: TaskBankSettings }
   | { type: 'START_SESSION' }
   | { type: 'BEGIN_NOTE_CAPTURE'; payload?: { tabId?: number; url?: string; title?: string } }
   | { type: 'NEXT_NOTE_CAPTURE_SOURCE' }
@@ -34,4 +37,5 @@ export type RuntimeResponse = {
   session?: AgentSession;
   export?: SessionExport;
   noteId?: string;
+  settings?: TaskBankSettings;
 };

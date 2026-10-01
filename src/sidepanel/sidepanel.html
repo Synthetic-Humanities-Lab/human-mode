@@ -14,6 +14,7 @@
         <p class="subtitle">Complete an assigned research routine as a proudly human operator in an agent-compatible workflow.</p>
       </div>
       <div class="header-actions">
+        <button id="openSettingsBtn" class="secondary" type="button">Settings</button>
         <button id="openOnboardingBtn" class="secondary ghost-button" type="button">How It Works</button>
         <div id="modeBadge" class="badge">OFF</div>
       </div>
@@ -79,7 +80,7 @@
       </div>
       <div class="stat-card full">
         <div class="label">Context Window</div>
-        <div class="value"><span id="contextUsed">0</span> / <span id="contextMax">750</span></div>
+        <div class="value"><span id="contextUsed">0</span> / <span id="contextMax">500</span></div>
         <div class="bar"><div id="contextFill" class="fill"></div></div>
         <div id="contextMeta" class="meta">Task 0 | Notes 0 | Draft 0</div>
       </div>
@@ -203,6 +204,23 @@
   </template>
 
   <div id="sideToast" class="side-toast" role="status" aria-live="polite"></div>
+
+  <dialog id="settingsDialog" class="utility-dialog" aria-labelledby="settingsTitle">
+    <div class="utility-heading"><div><div class="eyebrow">Workspace settings</div><h2 id="settingsTitle">Your research requests</h2></div><button id="closeSettingsBtn" class="secondary" type="button" aria-label="Close settings">Close</button></div>
+    <p class="utility-intro">Supply the questions. Let Human Mode assign the work.</p>
+    <form id="settingsForm">
+      <fieldset class="task-source-options"><legend>Task source</legend>
+        <label><input type="radio" name="taskSource" value="builtIn" checked /> Built-in requests <span>The original Human Mode task bank</span></label>
+        <label><input id="customTaskSource" type="radio" name="taskSource" value="custom" /> Your requests <span>A task from the bank you define below</span></label>
+      </fieldset>
+      <div class="settings-bank-heading"><h3>Your task bank</h3><button id="addCustomTaskBtn" class="secondary" type="button">Add Task</button></div>
+      <div id="customTaskList"></div>
+      <p id="settingsMessage" class="utility-message" role="status" aria-live="polite"></p>
+      <div class="bank-file-actions"><label class="file-button" for="importTaskBank">Import JSON</label><input id="importTaskBank" type="file" accept=".json,application/json" class="visually-hidden" /><button id="downloadTaskTemplateBtn" class="secondary" type="button">Download Template</button></div>
+      <p class="hint">Saved on this device · Changes apply to your next session</p>
+      <div class="utility-footer"><button type="submit" id="saveSettingsBtn">Save Settings</button></div>
+    </form>
+  </dialog>
 
   <script src="sidepanel.js"></script>
 </body>

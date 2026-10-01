@@ -84,6 +84,9 @@ export function hydrateSession(input: unknown): AgentSession {
   session.noteCaptureLockedUrl = stringFrom(source.noteCaptureLockedUrl);
   session.noteCaptureQueueIndex = nullableIntegerFrom(source.noteCaptureQueueIndex);
   session.candidateSetFinalized = source.candidateSetFinalized === true;
+  if (session.phase === Phase.RETRIEVAL || session.phase === Phase.INSPECTION) {
+    session.phase = session.candidateSetFinalized ? Phase.INSPECTION : Phase.RETRIEVAL;
+  }
   session.lastTrackedNavigationUrl = stringFrom(source.lastTrackedNavigationUrl);
   session.navigationChain = stringArrayFrom(source.navigationChain).filter(Boolean);
   session.rankCandidates = rankCandidatesFrom(source.rankCandidates);
