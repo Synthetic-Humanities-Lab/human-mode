@@ -1,4 +1,4 @@
-import { PDF_TOOL_UNAVAILABLE_MESSAGE } from '../shared';
+import { CONTEXT_EXPANSION_COST_CENTS, CONTEXT_EXPANSION_TOKENS, DEFAULT_BUDGET_CENTS, DEFAULT_CONTEXT_MAX, formatMoney, OPERATION_COST_CENTS, PDF_TOOL_UNAVAILABLE_MESSAGE, TOKEN_COST_CENTS_PER_TOKEN } from '../shared';
 
 export interface OnboardingStep {
   type: 'induction' | 'dossier' | 'faq';
@@ -106,3 +106,20 @@ export const tutorialTask = {
   requesterQuestion: 'How can a small museum preserve its audio recordings?',
   workOrder: 'Compare practical approaches to preserving recordings and recommend priorities for a small museum'
 };
+
+export const featureHelp: Record<string, { title: string; body: string }> = {
+  request: { title: 'Question and work order', body: 'The question defines what to answer. The work order sets the scope of your research.' },
+  sources: { title: 'Choosing sources', body: 'Choose pages with relevant evidence. PDFs are unavailable in this exercise.' },
+  ranked: { title: 'Reading order', body: 'Rank by relevance, credibility, and useful evidence. Commit a note before moving to the next source.' },
+  notes: { title: 'Retained evidence', body: 'Commit at least one note per source. Only retained notes are available during drafting. Revise or delete notes to free context.' },
+  deliverable: { title: 'Your answer', body: 'Write from retained notes. End Session delivers your last committed draft.' },
+  budget: { title: 'Session costs', body: `The requester allocates ${formatMoney(DEFAULT_BUDGET_CENTS)} of simulated money. Actions cost ${formatMoney(OPERATION_COST_CENTS)} each. Newly committed text costs ${formatMoney(TOKEN_COST_CENTS_PER_TOKEN)} per context unit. Extra capacity costs ${formatMoney(CONTEXT_EXPANSION_COST_CENTS)} for ${CONTEXT_EXPANSION_TOKENS} units.` },
+  context: { title: 'Shared context', body: `The request, notes, and draft share ${DEFAULT_CONTEXT_MAX} context units. One word counts as one unit in this exercise. Deleting text frees space without refunding its cost.` },
+  trace: { title: 'Session history', body: 'Your action history, included in Runtime JSON.' },
+  export: { title: 'Downloads', body: 'Deliverable saves your answer as a Word-compatible document. Runtime JSON saves the session record, including actions and costs.' },
+  settings: { title: 'Your task bank', body: 'Add or import questions and work orders. New sessions use your selected task bank.' },
+};
+export const tutorialSources = [
+  { title: 'A guide to preserving sound recordings', host: 'Archive guidance', evidence: 'Preserve an uncompressed master, keep copies in separate locations, and document the recording’s format and history.' },
+  { title: 'Choosing playback equipment', host: 'Equipment guide', evidence: 'Use equipment suitable for the original recording format and test playback before digitizing fragile recordings.' }
+];

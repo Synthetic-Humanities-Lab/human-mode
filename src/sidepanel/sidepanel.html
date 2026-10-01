@@ -14,6 +14,8 @@
         <p class="subtitle">Complete an assigned research routine as a proudly human operator in an agent-compatible workflow.</p>
       </div>
       <div class="header-actions">
+        <button id="openFaqBtn" class="secondary" type="button">FAQs</button>
+        <button id="openTutorialBtn" class="secondary" type="button">Tutorial</button>
         <button id="openSettingsBtn" class="secondary" type="button">Settings</button>
         <button id="openOnboardingBtn" class="secondary ghost-button" type="button">How It Works</button>
         <div id="modeBadge" class="badge">OFF</div>
@@ -39,6 +41,7 @@
         <div class="button-row">
           <button id="onboardingPrevBtn" class="secondary" type="button">Back</button>
           <button id="onboardingFaqBtn" class="secondary" type="button">FAQ</button>
+          <button id="onboardingTutorialBtn" class="secondary" type="button">Try Tutorial</button>
           <button id="onboardingNextBtn" type="button">Next</button>
           <button id="dismissOnboardingBtn" class="secondary" type="button">Close</button>
         </div>
@@ -57,7 +60,7 @@
       </div>
     </section>
 
-    <section class="panel stats-grid">
+    <section id="resourcesPanel" class="panel stats-grid">
       <div class="stat-card">
         <div class="label">State</div>
         <div id="stateValue" class="value">OFF</div>
@@ -86,9 +89,9 @@
       </div>
     </section>
 
-    <section class="panel section">
+    <section id="assignedTaskSection" class="panel section">
       <div class="section-header">
-        <h2>Assigned Task</h2>
+        <h2>Assigned Task <button class="info-button" type="button" data-help="request" aria-label="About your assigned task">i</button></h2>
         <span class="hint">Randomly assigned when the session starts.</span>
       </div>
       <div class="goal-block">
@@ -105,9 +108,9 @@
       </div>
     </section>
 
-    <section class="panel section">
+    <section id="candidateSection" class="panel section">
       <div class="section-header">
-        <h2>Candidate Sources</h2>
+        <h2>Candidate Sources <button class="info-button" type="button" data-help="sources" aria-label="About collecting sources">i</button></h2>
         <span class="hint">Candidate sources stay here while ranking happens on the page.</span>
       </div>
       <div id="rankCandidatesList" class="rank-candidates-list"></div>
@@ -119,18 +122,19 @@
 
     <section id="rankedPagesSection" class="panel section hidden">
       <div class="section-header">
-        <h2>Ranked Pages</h2>
+        <h2>Ranked Pages <button class="info-button" type="button" data-help="ranked" aria-label="About ranking sources">i</button></h2>
         <span class="hint">This is the order note taking will follow.</span>
       </div>
       <div id="rankedPagesList" class="rank-candidates-list"></div>
     </section>
 
-    <section class="panel section">
+    <section id="notesSection" class="panel section">
       <div class="section-header">
-        <h2>Internal Notes</h2>
+        <h2>Internal Notes <button class="info-button" type="button" data-help="notes" aria-label="About internal notes">i</button></h2>
         <span class="hint">Committed notes lock until you explicitly revise them.</span>
       </div>
       <div id="notesList" class="notes-list"></div>
+      <p id="notesProgress" class="hint"></p>
       <div class="button-row">
         <button id="newNoteBtn" class="secondary">Add Note Block</button>
         <button id="nextRankedPageBtn" class="secondary">Next Ranked Page</button>
@@ -140,7 +144,7 @@
 
     <section class="panel section" id="deliverableSection">
       <div class="section-header">
-        <h2>Deliverable</h2>
+        <h2>Deliverable <button class="info-button" type="button" data-help="deliverable" aria-label="About the deliverable">i</button></h2>
         <span class="hint">Draft here; retained notes show on the page in deliverable phase.</span>
       </div>
       <div class="deliverable-workspace">
@@ -153,7 +157,7 @@
       </div>
     </section>
 
-    <section class="panel section">
+    <section id="traceSection" class="panel section">
       <div class="section-header">
         <h2>Runtime Trace</h2>
       </div>
@@ -171,7 +175,7 @@
 
     <section id="exportSection" class="panel section hidden">
       <div class="section-header">
-        <h2>Session Export</h2>
+        <h2>Session Export <button class="info-button" type="button" data-help="export" aria-label="About session exports">i</button></h2>
         <span class="hint">Choose what to download.</span>
       </div>
       <div id="exportSummary" class="callout"></div>
@@ -209,7 +213,7 @@
     <div class="utility-heading"><div><div class="eyebrow">Workspace settings</div><h2 id="settingsTitle">Your research requests</h2></div><button id="closeSettingsBtn" class="secondary" type="button" aria-label="Close settings">Close</button></div>
     <p class="utility-intro">Supply the questions. Let Human Mode assign the work.</p>
     <form id="settingsForm">
-      <fieldset class="task-source-options"><legend>Task source</legend>
+      <fieldset class="task-source-options"><legend>Task source <button class="info-button" type="button" data-help="settings" aria-label="About custom tasks">i</button></legend>
         <label><input type="radio" name="taskSource" value="builtIn" checked /> Built-in requests <span>The original Human Mode task bank</span></label>
         <label><input id="customTaskSource" type="radio" name="taskSource" value="custom" /> Your requests <span>A task from the bank you define below</span></label>
       </fieldset>
@@ -220,6 +224,19 @@
       <p class="hint">Saved on this device · Changes apply to your next session</p>
       <div class="utility-footer"><button type="submit" id="saveSettingsBtn">Save Settings</button></div>
     </form>
+  </dialog>
+
+  <div id="featureHelp" popover="auto" role="tooltip" class="feature-help">
+    <strong id="featureHelpTitle"></strong>
+    <p id="featureHelpBody"></p>
+  </div>
+
+  <dialog id="tutorialDialog" class="section-tour-dialog" aria-modal="true" aria-labelledby="tutorialTitle">
+      <div class="tour-guide">
+        <div class="utility-heading"><div class="eyebrow">Guided tour</div><button id="exitTutorialBtn" class="secondary" type="button">Exit Tutorial</button></div>
+        <div class="tutorial-copy" aria-live="polite"><h2 id="tutorialTitle" tabindex="-1"></h2><p id="tutorialBody"></p></div>
+        <div class="utility-footer"><button id="tutorialBackBtn" type="button" class="secondary">Back</button><span id="tutorialStepMeta" class="hint"></span><button id="tutorialNextBtn" type="button">Next</button></div>
+      </div>
   </dialog>
 
   <script src="sidepanel.js"></script>

@@ -42,6 +42,7 @@ interface NoteUiState {
 }
 
 let session: AgentSession | null = null;
+let deferredSession: AgentSession | null = null;
 let noteUiState = new Map<string, NoteUiState>();
 let exportPayload: SessionExport | null = null;
 let contextExceeded = false;
@@ -55,6 +56,7 @@ const els = {
   appRoot: byId<HTMLElement>('appRoot'),
   modeBadge: byId<HTMLElement>('modeBadge'),
   openOnboardingBtn: byId<HTMLButtonElement>('openOnboardingBtn'),
+  openFaqBtn: byId<HTMLButtonElement>('openFaqBtn'),
   onboardingSection: byId<HTMLElement>('onboardingSection'),
   onboardingEyebrow: byId<HTMLElement>('onboardingEyebrow'),
   onboardingTitle: byId<HTMLElement>('onboardingTitle'),
@@ -117,7 +119,9 @@ void init();
 async function init(): Promise<void> {
   bindEvents();
   initOnboarding();
-  initGuidance(() => { if (onboardingVisible) dismissOnboarding(); }, showSideToast);
+  initGuidance(() => { if (onboardingVisible) dismissOnboarding(); }, showSideToast, () => {
+    if (deferredSession) { const next = deferredSession; deferredSession = null; adoptSession(next); }
+  });
   chrome.runtime.onMessage.addListener((message: BroadcastMessage) => {
     if (message?.type === 'SESSION_UPDATED') {
       adoptSession(message.session);
@@ -155,6 +159,7 @@ function renderPdfCapabilityNotice(candidateSession: AgentSession): void {
 
 function bindEvents(): void {
   els.openOnboardingBtn.addEventListener('click', () => openOnboarding(0));
+  els.openFaqBtn.addEventListener('click', () => openOnboarding(getFirstFaqStepIndex()));
   els.onboardingPrevBtn.addEventListener('click', () => {
     onboardingStepIndex = Math.max(0, onboardingStepIndex - 1);
     renderOnboarding();
@@ -164,7 +169,8 @@ function bindEvents(): void {
     renderOnboarding();
   });
   els.onboardingNextBtn.addEventListener('click', () => {
-    if (onboardingStepIndex >= onboardingSteps.length - 1) {
+    const nextStep = onboardingSteps[onboardingStepIndex + 1];
+    if (!nextStep || (onboardingSteps[onboardingStepIndex]?.type !== 'faq' && nextStep.type === 'faq')) {
       dismissOnboarding();
       return;
     }
@@ -805,6 +811,7 @@ function byId<T extends HTMLElement>(id: string): T {
 
 function adoptSession(next: AgentSession | null): void {
   if (!next || retiredSessionRunIds.has(next.sessionRunId)) return;
+  if (document.body.dataset.sectionTour) { deferredSession = next; return; }
   session = next;
   syncUiState();
   render();

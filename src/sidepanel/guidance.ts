@@ -1,18 +1,26 @@
 import { escapeHtml, makeId, parseCustomTaskBank, parseTaskBankSettings, RuntimeMessage, RuntimeResponse, TaskBankItem, TaskBankSettings } from '../shared';
-import { tutorialTask } from './copy';
+import { featureHelp, tutorialTask } from './copy';
 import { triggerDownload } from './export';
+import { initSectionTour } from './section-tour';
 
 const el = <T extends HTMLElement = HTMLElement>(id: string): T => document.getElementById(id) as T;
 
-export function initGuidance(beforeOpen: () => void, notify: (text: string, variant: 'success' | 'error') => void): void {
+export function initGuidance(beforeOpen: () => void, notify: (text: string, variant: 'success' | 'error') => void, afterTour: () => void): void {
   const settingsDialog = el<HTMLDialogElement>('settingsDialog');
+  const tutorialDialog = el<HTMLDialogElement>('tutorialDialog');
   const settingsForm = el<HTMLFormElement>('settingsForm');
   const taskList = el('customTaskList');
   const settingsMessage = el('settingsMessage');
   let tasks: TaskBankItem[] = [];
 
+  initHelp();
   el('openSettingsBtn').addEventListener('click', () => void openSettings());
   el('closeSettingsBtn').addEventListener('click', () => settingsDialog.close());
+  initSectionTour(() => { beforeOpen(); closeHelp(); }, afterTour);
+  for (const dialog of [settingsDialog, tutorialDialog]) {
+    dialog.addEventListener('close', closeHelp);
+    dialog.addEventListener('cancel', closeHelp);
+  }
 
   el('addCustomTaskBtn').addEventListener('click', () => {
     readTaskFields();
@@ -138,4 +146,55 @@ async function request(message: RuntimeMessage): Promise<RuntimeResponse> {
 
 function messageFrom(error: unknown): string {
   return error instanceof Error ? error.message : 'Could not complete this action';
+}
+
+function closeHelp(): void {
+  const popover = el('featureHelp');
+  if (popover.matches(':popover-open')) popover.hidePopover();
+}
+
+function initHelp(): void {
+  const popover = el('featureHelp');
+  let anchor: HTMLElement | null = null;
+  let timer = 0;
+  function show(button: HTMLElement): void {
+    const help = featureHelp[button.dataset.help || ''];
+    if (!help) return;
+    clearTimeout(timer);
+    closeHelp();
+    anchor?.removeAttribute('aria-describedby');
+    anchor = button;
+    (button.closest('dialog') || document.body).appendChild(popover);
+    el('featureHelpTitle').textContent = help.title;
+    el('featureHelpBody').textContent = help.body;
+    popover.showPopover();
+    button.setAttribute('aria-describedby', 'featureHelpBody');
+    const rect = button.getBoundingClientRect();
+    const width = popover.getBoundingClientRect().width;
+    const height = popover.getBoundingClientRect().height;
+    popover.style.left = `${Math.max(12, Math.min(rect.left + rect.width / 2 - width / 2, innerWidth - width - 12))}px`;
+    popover.style.top = `${Math.max(12, Math.min(rect.bottom + 10, innerHeight - height - 12))}px`;
+  }
+  document.addEventListener('click', event => {
+    const button = (event.target as HTMLElement).closest<HTMLElement>('[data-help]');
+    if (!button) return;
+    event.preventDefault();
+    show(button);
+  });
+  for (const type of ['pointerover', 'focusin']) document.addEventListener(type, event => {
+    const button = (event.target as HTMLElement).closest<HTMLElement>('[data-help]');
+    if (button && button !== anchor) show(button);
+    else if (button && !popover.matches(':popover-open')) show(button);
+  });
+  for (const type of ['pointerout', 'focusout']) document.addEventListener(type, event => {
+    const target = event.target as HTMLElement;
+    const next = (event as MouseEvent | FocusEvent).relatedTarget;
+    if (!(target.closest('[data-help]') || popover.contains(target))) return;
+    if (next instanceof Node && (popover.contains(next) || anchor?.contains(next))) return;
+    timer = window.setTimeout(closeHelp, 180);
+  });
+  popover.addEventListener('pointerenter', () => clearTimeout(timer));
+  popover.addEventListener('toggle', () => {
+    if (!popover.matches(':popover-open')) anchor?.removeAttribute('aria-describedby');
+  });
 }
