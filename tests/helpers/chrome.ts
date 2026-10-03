@@ -1,4 +1,4 @@
-import { type RuntimeMessage, type RuntimeResponse } from '../../src/shared';
+import { type BroadcastMessage, type RuntimeMessage, type RuntimeResponse } from '../../src/shared';
 
 class FakeEvent<T extends (...args: any[]) => any> {
   private listeners: T[] = [];
@@ -52,7 +52,7 @@ export function createChromeMock(options: CreateChromeMockOptions = {}) {
 
   const runtimeOnInstalled = new FakeEvent<() => void | Promise<void>>();
   const runtimeOnMessage = new FakeEvent<
-    (message: RuntimeMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: RuntimeResponse) => void) => boolean | void
+    (message: RuntimeMessage | BroadcastMessage, sender: chrome.runtime.MessageSender, sendResponse: (response: RuntimeResponse) => void) => boolean | void
   >();
   const tabsOnActivated = new FakeEvent<(info: { tabId: number }) => void | Promise<void>>();
   const tabsOnHighlighted = new FakeEvent<(info: { tabIds: number[] }) => void | Promise<void>>();
@@ -143,6 +143,9 @@ export function createChromeMock(options: CreateChromeMockOptions = {}) {
     updates,
     events: {
       runtimeOnMessage,
+      tabsOnActivated,
+      tabsOnHighlighted,
+      tabsOnCreated,
       tabsOnUpdated,
       webNavigationOnCommitted
     }

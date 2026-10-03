@@ -85,7 +85,12 @@ export const onboardingSteps: OnboardingStep[] = [
 export const responseMessages: Record<string, string> = {
   OUT_OF_BUDGET: 'Session allocation exhausted. End the session or spend less.',
   CONTEXT_FULL: 'Context window full. Use Expand Context, or revise or delete note blocks before committing more text.',
-  NO_ACTIVE_TAB: 'Open a browser tab before starting a session.',
+  NO_ACTIVE_TAB: 'Open a browser tab before starting or resuming a session.',
+  SESSION_FINISHED: 'This session has ended. Download its record or start a new session.',
+  SESSION_NOT_ACTIVE: 'Only an active session can be paused.',
+  SESSION_NOT_PAUSED: 'Only a paused session can be resumed.',
+  NOTE_CAPTURE_SOURCE_UNAVAILABLE: 'The paused source could not be restored. Abort the session to download its record before starting again.',
+  NOTE_CAPTURE_TAB_UNAVAILABLE: 'The source tab could not be restored. The session is still paused; try Resume again.',
   TASK_BANK_EMPTY: 'The built-in task bank is empty.',
   NO_RANK_CANDIDATES: 'Add at least one candidate source before beginning note taking.',
   CANDIDATE_SET_NOT_FINALIZED: 'Press Done Adding Sources in the sidebar before ranking and note taking.',
