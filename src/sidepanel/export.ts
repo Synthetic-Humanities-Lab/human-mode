@@ -1,10 +1,10 @@
-import { escapeHtml, pretty, SessionExport } from '../shared';
+import { escapeHtml, formatMoney, pretty, SessionExport } from '../shared';
 
 export function renderExportSummary(exportData: SessionExport): string {
   return `
     <strong>${pretty(exportData.outcome)}</strong><br>
     Deliverable: ${exportData.deliverable ? 'available' : 'none'}<br>
-    Budget spent: $${(exportData.spendCents / 100).toFixed(2)}<br>
+    Budget spent: ${formatMoney(exportData.spendCents)}<br>
     Final context: ${escapeHtml(exportData.stats.finalContextLoad)}
   `;
 }

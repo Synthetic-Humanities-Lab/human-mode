@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { AgentSession, createEmptySession, makeSessionExport, Phase, RuntimeMessage, RuntimeResponse, SessionState } from '../../src/shared';
-import { ONBOARDING_STORAGE_KEY } from '../../src/sidepanel/copy';
+import { featureHelp, ONBOARDING_STORAGE_KEY } from '../../src/sidepanel/copy';
 import { createChromeMock } from '../helpers/chrome';
 
 vi.mock('../../src/sidepanel/guidance', () => ({ initGuidance: vi.fn() }));
@@ -54,6 +54,26 @@ describe('side-panel session persistence and save controls', () => {
   afterEach(() => {
     vi.unstubAllGlobals();
     document.body.innerHTML = '';
+  });
+
+  it.each([SessionState.ACTIVE, SessionState.COMPLETED])('shows separate spending totals and fractional cents in a %s session', async state => {
+    const session = { ...savedSession(state), spendCents: 141.7, textSpendCents: 1.7, contextExpansionSpendCents: 100, operationsUsed: 4 };
+    await openPanel(session);
+    expect(document.getElementById('budgetRemaining')?.textContent).toBe('$8.583');
+    expect(document.getElementById('budgetMeta')?.textContent).toBe('Spent · Actions $0.40 · Text $0.017 · Capacity $1.00');
+    if (state === SessionState.COMPLETED) {
+      expect(document.getElementById('exportSummary')?.textContent).toContain('Budget spent: $1.417');
+    }
+  });
+
+  it('explains unit prices, revision charges and free session controls', () => {
+    const body = featureHelp.budget!.body;
+    expect(body).toContain('Collect or Rank cost $0.10 each');
+    expect(body).toContain('$0.001 per added context unit');
+    expect(body).toContain('only when the saved word count increases');
+    expect(body).toContain('$1.00 for 100 units');
+    expect(body).toContain('Starting, pausing, resuming, and changing phases are free');
+    expect(body).toContain('accumulated costs, not unit prices');
   });
 
   it.each([SessionState.COMPLETED, SessionState.ABORTED])('restores downloads when reopening a %s session', async state => {

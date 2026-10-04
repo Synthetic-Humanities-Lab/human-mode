@@ -63,7 +63,8 @@ describe('session interruption and concurrent writes', () => {
       noteCaptureLockedUrl: harness.initialSession.activeUrl, activeTabId: 1
     } });
     expect(await harness.chrome.tabs.get(1)).toMatchObject({ url: harness.initialSession.activeUrl, active: true });
-    expect(resumed.session?.spendCents).toBe(paused.session!.spendCents + 1);
+    expect(resumed.session?.spendCents).toBe(paused.session!.spendCents);
+    expect(resumed.session?.operationsUsed).toBe(paused.session!.operationsUsed);
     expect(resumed.session?.notes).toEqual(harness.initialSession.notes);
 
     if (queueIndex === 0) {
@@ -105,13 +106,17 @@ describe('session interruption and concurrent writes', () => {
     expect(harness.updates).toEqual([]);
   });
 
-  it('keeps the session paused when the resume charge exceeds its remaining budget', async () => {
+  it('resumes without a charge even when the budget is exhausted', async () => {
     const harness = await captureSession();
     const paused = { ...harness.initialSession, sessionState: SessionState.PAUSED, spendCents: harness.initialSession.budgetCents };
     harness.store[STORAGE_KEY] = paused;
-    expect(await dispatchRuntimeMessage(harness, { type: 'RESUME_SESSION' })).toMatchObject({ ok: false, error: 'OUT_OF_BUDGET', session: paused });
-    expect(harness.store[STORAGE_KEY]).toEqual(paused);
-    expect(harness.updates).toEqual([]);
+    const resumed = await dispatchRuntimeMessage(harness, { type: 'RESUME_SESSION' });
+    expect(resumed).toMatchObject({ ok: true, session: {
+      sessionState: SessionState.ACTIVE, spendCents: paused.spendCents, operationsUsed: paused.operationsUsed,
+      noteCaptureLockedUrl: paused.noteCaptureLockedUrl, noteCaptureQueueIndex: paused.noteCaptureQueueIndex
+    } });
+    expect(resumed.session?.trace.at(-1)?.kind).toBe(TraceKind.SESSION_RESUME);
+    expect(harness.store[STORAGE_KEY]).toEqual(resumed.session);
   });
 
   it('keeps the session paused without spending when no browser tab is available', async () => {
@@ -146,7 +151,7 @@ describe('session interruption and concurrent writes', () => {
       ok: false, error: 'SESSION_NOT_PAUSED', session: resumed.session
     });
     expect(harness.store[STORAGE_KEY]).toEqual(resumed.session);
-    expect(resumed.session?.operationsUsed).toBe(1);
+    expect(resumed.session?.operationsUsed).toBe(0);
   });
 
   it('retains both concurrent note saves and accounts for both charges', async () => {
@@ -158,7 +163,8 @@ describe('session interruption and concurrent writes', () => {
     const stored = (await dispatchRuntimeMessage(harness, { type: 'GET_SESSION' })).session!;
     expect(stored.notes.map(note => note.id)).toEqual(['first', 'one', 'two']);
     expect(stored.operationsUsed).toBe(2);
-    expect(stored.spendCents).toBe(6);
+    expect(stored.spendCents).toBe(20.4);
+    expect(stored.textSpendCents).toBe(0.4);
   });
 
   it('includes a preceding concurrent draft save in the completed export and storage', async () => {

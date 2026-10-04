@@ -290,8 +290,7 @@ function render(): void {
   if (!session) return;
   els.appRoot.dataset.sessionState = session.sessionState || '';
 
-  const spendOpsCents = Math.max(0, session.spendCents - session.contextExpansionSpendCents);
-  const spendContextCents = session.contextExpansionSpendCents;
+  const spendOpsCents = Math.max(0, session.spendCents - session.textSpendCents - session.contextExpansionSpendCents);
   const budgetRatio = session.budgetCents ? session.spendCents / session.budgetCents : 0;
 
   els.modeBadge.textContent = session.sessionState === SessionState.ACTIVE ? 'ON' : session.sessionState.toUpperCase();
@@ -301,8 +300,10 @@ function render(): void {
   applyProjectedContextUi();
   els.budgetRemaining.textContent = formatMoney(getBudgetRemainingCents(session));
   els.budgetMeta.textContent = [
+    'Spent',
     `Actions ${formatMoney(spendOpsCents)}`,
-    `Text and capacity ${formatMoney(spendContextCents)}`
+    `Text ${formatMoney(session.textSpendCents)}`,
+    `Capacity ${formatMoney(session.contextExpansionSpendCents)}`
   ].join(' · ');
   els.requesterQuestionDisplay.textContent = session.requesterQuestion || 'No requester question assigned yet.';
   els.requesterQuestionDisplay.classList.toggle('muted', !session.requesterQuestion);

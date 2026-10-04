@@ -54,8 +54,9 @@ export const DEFAULT_CONTEXT_MAX = 500;
 export const DEFAULT_BUDGET_CENTS = 1000;
 export const CONTEXT_WARNING_THRESHOLD = 0.85;
 export const CONTEXT_EXPANSION_TOKENS = 100;
-export const TOKEN_COST_CENTS_PER_TOKEN = 1;
-export const OPERATION_COST_CENTS = 1;
+export const CONTEXT_EXPANSION_COST_CENTS = 100;
+export const TOKEN_COST_CENTS_PER_TOKEN = 0.1;
+export const OPERATION_COST_CENTS = 10;
 
 export interface TaskBankItem {
   id: string;
@@ -109,6 +110,7 @@ export interface AgentSession {
   spendCents: number;
   operationsUsed: number;
   contextMax: number;
+  textSpendCents: number;
   contextExpansionSpendCents: number;
   activeTabId: number | null;
   activeUrl: string;
@@ -142,6 +144,7 @@ export interface SessionExport {
     operationsMax: number;
     budgetRemainingCents: number;
     estimatedSpend: number;
+    textSpendCents: number;
     contextExpansionSpendCents: number;
     notesCommitted: number;
     pagesOpened: number;

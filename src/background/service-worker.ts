@@ -33,7 +33,7 @@ import {
   parseTaskBankSettings,
   pickRandomTask,
   roughTokenCount,
-  roundCents
+  normalizeCents
 } from '../shared';
 
 // Runtime commands and browser events share one read-modify-write boundary.
@@ -386,18 +386,18 @@ function logTrace(session: AgentSession, kind: TraceKind, detail: string): void 
 }
 
 function canSpend(session: AgentSession, cents: number): boolean {
-  return roundCents(session.spendCents + cents) <= session.budgetCents;
+  return normalizeCents(session.spendCents + cents) <= session.budgetCents;
 }
 
 function getContextTokenCostCents(nextTokens: number, originalTokens = 0): number {
   return getTokenCostCents(Math.max(0, nextTokens - originalTokens));
 }
 
-function applyContextSpend(session: AgentSession, cents = 0): void {
-  const safeCents = roundCents(Math.max(0, Number(cents) || 0));
+function applyContextSpend(session: AgentSession, cents: number, category: 'textSpendCents' | 'contextExpansionSpendCents'): void {
+  const safeCents = normalizeCents(Math.max(0, Number(cents) || 0));
   if (!safeCents) return;
-  session.spendCents = roundCents(session.spendCents + safeCents);
-  session.contextExpansionSpendCents = roundCents(session.contextExpansionSpendCents + safeCents);
+  session.spendCents = normalizeCents(session.spendCents + safeCents);
+  session[category] = normalizeCents(session[category] + safeCents);
 }
 
 function spendOperation(
@@ -408,7 +408,7 @@ function spendOperation(
 ): RuntimeResponse {
   if (!canSpend(session, cents)) return { ok: false, error: 'OUT_OF_BUDGET', session };
   session.operationsUsed += 1;
-  session.spendCents = roundCents(session.spendCents + cents);
+  session.spendCents = normalizeCents(session.spendCents + cents);
   logTrace(session, kind, detail);
   return { ok: true, session };
 }
@@ -466,9 +466,9 @@ async function startSession(sender: chrome.runtime.MessageSender): Promise<Runti
   session.activeUrl = searchUrl;
   session.activeTitle = `Google results for ${assignedTask.workOrder}`;
   session.navigationChain = [searchUrl];
-  session.lastTrackedNavigationUrl = activeTab.url || '';
-  const spent = spendOperation(session, TraceKind.SESSION_START, `Session started with work order: ${assignedTask.workOrder}`);
-  if (!spent.ok) return spent;
+  // A new run's initial search is chargeable even if the tab already has that query.
+  session.lastTrackedNavigationUrl = activeTab.url === searchUrl ? '' : activeTab.url || '';
+  logTrace(session, TraceKind.SESSION_START, `Session started with work order: ${assignedTask.workOrder}`);
   await persistSession(session);
   await queueTabNavigation(activeTab.id, searchUrl);
   return { ok: true, session };
@@ -563,10 +563,10 @@ async function commitNoteBlock(payload: { id?: string; committedText?: string; s
 
   const noteCommitCostCents = OPERATION_COST_CENTS;
   const noteContextCostCents = getContextTokenCostCents(nextTokens, originalTokens);
-  if (!canSpend(session, roundCents(noteCommitCostCents + noteContextCostCents))) {
+  if (!canSpend(session, normalizeCents(noteCommitCostCents + noteContextCostCents))) {
     return { ok: false, error: 'OUT_OF_BUDGET', session };
   }
-  applyContextSpend(session, noteContextCostCents);
+  applyContextSpend(session, noteContextCostCents, 'textSpendCents');
   const spent = spendOperation(
     session,
     TraceKind.NOTE_COMMIT,
@@ -640,8 +640,7 @@ async function enterDeliverable(): Promise<RuntimeResponse> {
   const ordered = session.rankCandidates;
   const missingCoverage = ordered.some(candidate => !hasCommittedNoteForSource(session, candidate.url));
   if (missingCoverage) return { ok: false, error: 'MISSING_NOTES_FOR_ALL_RANKED_SOURCES', session };
-  const spent = spendOperation(session, TraceKind.DRAFT_PHASE_ENTER, 'Entered deliverable phase');
-  if (!spent.ok) return spent;
+  logTrace(session, TraceKind.DRAFT_PHASE_ENTER, 'Entered deliverable phase');
   session.phase = Phase.DELIVERABLE;
   clearNoteCaptureState(session);
   await persistAndBroadcastSession(session);
@@ -658,10 +657,10 @@ async function commitDraft(payload: { committedText?: string } = {}): Promise<Ru
   if (projected > session.contextMax) return { ok: false, error: 'CONTEXT_FULL', session };
   const draftCommitCostCents = OPERATION_COST_CENTS;
   const draftContextCostCents = getContextTokenCostCents(nextTokens, originalTokens);
-  if (!canSpend(session, roundCents(draftCommitCostCents + draftContextCostCents))) {
+  if (!canSpend(session, normalizeCents(draftCommitCostCents + draftContextCostCents))) {
     return { ok: false, error: 'OUT_OF_BUDGET', session };
   }
-  applyContextSpend(session, draftContextCostCents);
+  applyContextSpend(session, draftContextCostCents, 'textSpendCents');
   const spent = spendOperation(
     session,
     TraceKind.DRAFT_COMMIT,
@@ -688,7 +687,6 @@ async function pauseSession(): Promise<RuntimeResponse> {
 async function resumeSession(): Promise<RuntimeResponse> {
   const session = await getSession();
   if (session.sessionState !== SessionState.PAUSED) return { ok: false, error: 'SESSION_NOT_PAUSED', session };
-  if (!canSpend(session, OPERATION_COST_CENTS)) return { ok: false, error: 'OUT_OF_BUDGET', session };
 
   let captureTab: chrome.tabs.Tab | null = null;
   let queueIndex = session.noteCaptureQueueIndex;
@@ -724,8 +722,7 @@ async function resumeSession(): Promise<RuntimeResponse> {
     session.lastTrackedNavigationUrl = source.url;
     pushNavigation(session, source.url);
   }
-  const spent = spendOperation(session, TraceKind.SESSION_RESUME, 'Session resumed');
-  if (!spent.ok) return spent;
+  logTrace(session, TraceKind.SESSION_RESUME, 'Session resumed');
   session.sessionState = SessionState.ACTIVE;
   await persistAndBroadcastSession(session);
   return { ok: true, session };
@@ -734,7 +731,7 @@ async function resumeSession(): Promise<RuntimeResponse> {
 async function expandContext(): Promise<RuntimeResponse> {
   const session = await getSession();
   if (!canSpend(session, CONTEXT_EXPANSION_COST_CENTS)) return { ok: false, error: 'OUT_OF_BUDGET', session };
-  applyContextSpend(session, CONTEXT_EXPANSION_COST_CENTS);
+  applyContextSpend(session, CONTEXT_EXPANSION_COST_CENTS, 'contextExpansionSpendCents');
   logTrace(session, TraceKind.CONTEXT_EXPANSION, `Expanded context window by ${CONTEXT_EXPANSION_TOKENS} tokens`);
   session.contextMax += CONTEXT_EXPANSION_TOKENS;
   await persistAndBroadcastSession(session);
@@ -828,5 +825,5 @@ async function finalizeRankCandidates(): Promise<RuntimeResponse> {
 }
 
 function isHydratedStorage(value: unknown): boolean {
-  return typeof value === 'object' && value !== null && 'sessionRunId' in value && 'draft' in value;
+  return typeof value === 'object' && value !== null && 'sessionRunId' in value && 'draft' in value && 'textSpendCents' in value;
 }
