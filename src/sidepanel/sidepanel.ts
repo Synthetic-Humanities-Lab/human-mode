@@ -397,11 +397,12 @@ function renderLayout(): void {
   els.traceSection.classList.toggle('hidden', state === SessionState.OFF);
 
   const stages = ['start', 'retrieval', 'inspection', 'note_capture', 'deliverable'];
-  const current = Math.max(0, stages.indexOf(session.phase === Phase.FRAMING ? 'start' : session.phase));
+  const workflowPhase = live ? session.phase : Phase.START;
+  const current = Math.max(0, stages.indexOf(workflowPhase === Phase.FRAMING ? 'start' : workflowPhase));
   document.querySelectorAll<HTMLElement>('.workflow li').forEach((step, index) => {
-    step.classList.toggle('current', !finished && index === current);
-    step.classList.toggle('complete', finished || index < current);
-    if (!finished && index === current) step.setAttribute('aria-current', 'step');
+    step.classList.toggle('current', index === current);
+    step.classList.toggle('complete', index < current);
+    if (index === current) step.setAttribute('aria-current', 'step');
     else step.removeAttribute('aria-current');
   });
 }

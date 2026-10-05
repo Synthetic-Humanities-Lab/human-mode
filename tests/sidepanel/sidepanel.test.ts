@@ -56,6 +56,42 @@ describe('side-panel session persistence and save controls', () => {
     document.body.innerHTML = '';
   });
 
+  it.each([
+    { state: SessionState.OFF, phase: Phase.START },
+    { state: SessionState.OFF, phase: Phase.RETRIEVAL },
+    { state: SessionState.ABORTED, phase: Phase.RETRIEVAL },
+    { state: SessionState.COMPLETED, phase: Phase.DELIVERABLE }
+  ])('highlights Request for a $state session with saved phase $phase', async ({ state, phase }) => {
+    await openPanel({ ...savedSession(state), phase });
+    expect([...document.querySelectorAll<HTMLElement>('.workflow .current')].map(step => step.dataset.step)).toEqual([Phase.START]);
+    expect(document.querySelectorAll('.workflow .complete')).toHaveLength(0);
+    expect(document.querySelector('.workflow [aria-current="step"]')?.getAttribute('data-step')).toBe(Phase.START);
+  });
+
+  it.each([SessionState.ACTIVE, SessionState.PAUSED])('follows the saved phase for a %s session', async state => {
+    const session = { ...savedSession(state), phase: Phase.RETRIEVAL };
+    const { harness } = await openPanel(session);
+    const phases = [Phase.RETRIEVAL, Phase.INSPECTION, Phase.NOTE_CAPTURE, Phase.DELIVERABLE];
+    for (const [index, phase] of phases.entries()) {
+      await harness.events.runtimeOnMessage.trigger({ type: 'SESSION_UPDATED', session: { ...session, phase } }, {}, () => {});
+      expect([...document.querySelectorAll<HTMLElement>('.workflow .current')].map(step => step.dataset.step)).toEqual([phase]);
+      expect(document.querySelectorAll('.workflow .complete')).toHaveLength(index + 1);
+      expect(document.querySelector('.workflow [aria-current="step"]')?.getAttribute('data-step')).toBe(phase);
+    }
+  });
+
+  it('keeps Request highlighted until starting the next session succeeds', async () => {
+    const { send } = await openPanel({ ...savedSession(SessionState.ABORTED), phase: Phase.RETRIEVAL });
+    let resolveStart!: (response: RuntimeResponse) => void;
+    send.mockImplementation(() => new Promise<RuntimeResponse>(resolve => { resolveStart = resolve; }));
+    button('startSessionBtn').click();
+    expect(send).toHaveBeenLastCalledWith({ type: 'START_SESSION' });
+    expect(document.querySelector('.workflow .current')?.getAttribute('data-step')).toBe(Phase.START);
+    resolveStart({ ok: true, session: { ...createEmptySession(), sessionState: SessionState.ACTIVE, phase: Phase.RETRIEVAL } });
+    await vi.waitFor(() => expect(document.querySelector('.workflow .current')?.getAttribute('data-step')).toBe(Phase.RETRIEVAL));
+    expect(document.querySelector('.workflow [aria-current="step"]')?.getAttribute('data-step')).toBe(Phase.RETRIEVAL);
+  });
+
   it.each([SessionState.ACTIVE, SessionState.COMPLETED])('shows separate spending totals and fractional cents in a %s session', async state => {
     const session = { ...savedSession(state), spendCents: 141.7, textSpendCents: 1.7, contextExpansionSpendCents: 100, operationsUsed: 4 };
     await openPanel(session);
