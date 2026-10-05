@@ -17,7 +17,7 @@ describe('tutorial budget example', () => {
     const remaining = document.getElementById('budgetRemaining')!;
     const meta = document.getElementById('budgetMeta')!;
     const fill = document.getElementById('budgetFill')!;
-    remaining.textContent = '$8.583';
+    remaining.textContent = '$8.58';
     meta.textContent = 'Spent · Actions $0.40 · Text $0.017 · Capacity $1.00';
     fill.style.width = '14.17%';
     const beforeOpen = vi.fn();
@@ -30,7 +30,7 @@ describe('tutorial budget example', () => {
     expect(fill.style.width).toBe('1%');
     document.getElementById('exitTutorialBtn')!.click();
     expect(afterClose).toHaveBeenCalledOnce();
-    expect(remaining.textContent).toBe('$8.583');
+    expect(remaining.textContent).toBe('$8.58');
     expect(meta.textContent).toBe('Spent · Actions $0.40 · Text $0.017 · Capacity $1.00');
     expect(fill.style.width).toBe('14.17%');
   });

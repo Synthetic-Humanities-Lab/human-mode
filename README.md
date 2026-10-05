@@ -33,7 +33,7 @@ Each session starts with $10 in simulated money:
 - Adding 100 units of context capacity costs a fixed $1.00, independently of text charges.
 - Starting, pausing, resuming, and changing phases are free. The initial search is charged as a search action.
 
-The **Spent** row separates accumulated action, text, and capacity costs. Charges retain fractional cents, and the display uses three decimal places when needed. For example, committing a new 101-word note costs $0.10 for the action plus $0.101 for text, totaling $0.201.
+The **Spent** row separates accumulated action, text, and capacity costs. Accounting and exports retain fractional cents. The remaining budget is displayed rounded to the nearest cent, always with two decimal places; detailed charges use three when needed. For example, committing a new 101-word note costs $0.10 for the action plus $0.101 for text, totaling $0.201.
 
 Existing sessions retain their actual spending and operation counts. Their legacy combined text/capacity amount is split using recorded expansion events at the historical $1 price; future charges use the new rates. Start a new session for a full run under the new prices.
 

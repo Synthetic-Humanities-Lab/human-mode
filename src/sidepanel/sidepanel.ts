@@ -298,7 +298,7 @@ function render(): void {
   els.phaseValue.textContent = ({ start: 'Request', framing: 'Request', retrieval: 'Collect', inspection: 'Rank', note_capture: 'Notes', deliverable: 'Deliver' })[session.phase];
   els.contextMax.textContent = String(session.contextMax);
   applyProjectedContextUi();
-  els.budgetRemaining.textContent = formatMoney(getBudgetRemainingCents(session));
+  els.budgetRemaining.textContent = formatMoney(Math.round(getBudgetRemainingCents(session)));
   els.budgetMeta.textContent = [
     'Spent',
     `Actions ${formatMoney(spendOpsCents)}`,

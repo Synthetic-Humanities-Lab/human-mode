@@ -86,7 +86,7 @@ export function initSectionTour(beforeOpen: () => void, afterClose: () => void):
     text('stateValue', 'Active');
     text('phaseValue', 'Collect');
     const exampleSpendCents = OPERATION_COST_CENTS; // The initial search; starting is free.
-    text('budgetRemaining', formatMoney(DEFAULT_BUDGET_CENTS - exampleSpendCents));
+    text('budgetRemaining', formatMoney(Math.round(DEFAULT_BUDGET_CENTS - exampleSpendCents)));
     text('budgetMeta', `Spent · Actions ${formatMoney(exampleSpendCents)} · Text ${formatMoney(0)} · Capacity ${formatMoney(0)}`);
     text('contextUsed', '27');
     text('contextMeta', 'Assigned task 27 | Notes 0 | Draft 0');

@@ -59,11 +59,25 @@ describe('side-panel session persistence and save controls', () => {
   it.each([SessionState.ACTIVE, SessionState.COMPLETED])('shows separate spending totals and fractional cents in a %s session', async state => {
     const session = { ...savedSession(state), spendCents: 141.7, textSpendCents: 1.7, contextExpansionSpendCents: 100, operationsUsed: 4 };
     await openPanel(session);
-    expect(document.getElementById('budgetRemaining')?.textContent).toBe('$8.583');
+    expect(document.getElementById('budgetRemaining')?.textContent).toBe('$8.58');
     expect(document.getElementById('budgetMeta')?.textContent).toBe('Spent · Actions $0.40 · Text $0.017 · Capacity $1.00');
     if (state === SessionState.COMPLETED) {
       expect(document.getElementById('exportSummary')?.textContent).toContain('Budget spent: $1.417');
     }
+  });
+
+  it.each([
+    { spendCents: 436.9, remaining: '$5.63', exactRemainingCents: 563.1 },
+    { spendCents: 436.5, remaining: '$5.64', exactRemainingCents: 563.5 },
+    { spendCents: 436.1, remaining: '$5.64', exactRemainingCents: 563.9 }
+  ])('rounds the remaining display to $remaining while keeping exact export amounts', async ({ spendCents, remaining, exactRemainingCents }) => {
+    await openPanel({ ...savedSession(SessionState.COMPLETED), spendCents });
+    expect(document.getElementById('budgetRemaining')?.textContent).toBe(remaining);
+    button('downloadJsonBtn').click();
+    const exports = await import('../../src/sidepanel/export');
+    expect(exports.downloadSessionExportFile).toHaveBeenCalledWith(expect.objectContaining({
+      spendCents, stats: expect.objectContaining({ budgetRemainingCents: exactRemainingCents })
+    }));
   });
 
   it('explains unit prices, revision charges and free session controls', () => {
