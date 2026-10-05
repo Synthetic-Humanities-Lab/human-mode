@@ -21,7 +21,7 @@
 
     <div class="workflow" aria-label="Session progress">
       <ol>
-        <li data-step="start"><span>01</span> Request</li>
+        <li data-step="start" class="current" aria-current="step"><span>01</span> Request</li>
         <li data-step="retrieval"><span>02</span> Collect</li>
         <li data-step="inspection"><span>03</span> Rank</li>
         <li data-step="note_capture"><span>04</span> Notes</li>
@@ -81,7 +81,7 @@
         <div class="label">Session Budget <button class="info-button" type="button" data-help="budget" aria-label="About the session budget">i</button></div>
         <div class="value"><span id="budgetRemaining">$10.00</span> remaining</div>
         <div class="bar"><div id="budgetFill" class="fill"></div></div>
-        <div id="budgetMeta" class="meta">Actions $0.00 · Text and capacity $0.00</div>
+        <div id="budgetMeta" class="meta">Spent · Actions $0.00 · Text $0.00 · Capacity $0.00</div>
       </div>
       <div class="stat-card full">
         <div class="label">Context Window <button class="info-button" type="button" data-help="context" aria-label="About the context window">i</button></div>

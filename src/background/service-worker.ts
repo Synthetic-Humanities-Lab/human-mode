@@ -33,19 +33,28 @@ import {
   parseTaskBankSettings,
   pickRandomTask,
   roughTokenCount,
-  roundCents
+  normalizeCents
 } from '../shared';
 
-chrome.runtime.onInstalled.addListener(async () => {
+// Runtime commands and browser events share one read-modify-write boundary.
+let sessionUpdateQueue: Promise<void> = Promise.resolve();
+
+function enqueueSessionUpdate<T>(operation: () => Promise<T>): Promise<T> {
+  const queued = sessionUpdateQueue.then(operation);
+  sessionUpdateQueue = queued.then(() => undefined, () => undefined);
+  return queued;
+}
+
+chrome.runtime.onInstalled.addListener(() => enqueueSessionUpdate(async () => {
   const stored = await readStoredSessionRecord();
   if (stored === undefined) {
     await chrome.storage.local.set({ [STORAGE_KEY]: createEmptySession() });
   }
   await chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true });
-});
+}));
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  void handleMessage(message as RuntimeMessage, sender).then(sendResponse).catch(error => {
+  void enqueueSessionUpdate(() => handleMessage(message as RuntimeMessage, sender)).then(sendResponse).catch(error => {
     sendResponse({ ok: false, error: error instanceof Error ? error.message : 'Could not complete this action' });
   });
   return true;
@@ -53,14 +62,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
 const pendingRedirects = new Map<number, string>();
 const pendingTabBounceTokens = new Map<number, string>();
-// ponytail: one tracked session, so serialize its tab updates with a single queue.
-let navigationSyncQueue: Promise<void> = Promise.resolve();
-
-function enqueueNavigationSync<T>(operation: () => Promise<T>): Promise<T> {
-  const queued = navigationSyncQueue.then(operation);
-  navigationSyncQueue = queued.then(() => undefined, () => undefined);
-  return queued;
-}
 
 function isNewTabPage(url = ''): boolean {
   return url === 'chrome://newtab/' || url === 'edge://newtab/' || url === 'about:blank';
@@ -76,10 +77,16 @@ function getCandidateIndex(session: AgentSession, url = ''): number {
   return (session.rankCandidates || []).findIndex(candidate => normalizeTrackedUrl(candidate.url) === normalized);
 }
 
-async function queueTabNavigation(tabId: number | null | undefined, url: string): Promise<void> {
-  if (!tabId || !url) return;
+async function queueTabNavigation(tabId: number | null | undefined, url: string): Promise<boolean> {
+  if (!tabId || !url) return false;
   pendingRedirects.set(tabId, url);
-  await chrome.tabs.update(tabId, { url }).catch(() => undefined);
+  try {
+    await chrome.tabs.update(tabId, { url });
+    return true;
+  } catch {
+    pendingRedirects.delete(tabId);
+    return false;
+  }
 }
 
 async function focusTrackedTab(tabId: number, windowId: number, tabIndex: number | null = null): Promise<void> {
@@ -133,7 +140,7 @@ async function bounceToTrackedTab(
   await broadcastTabLockToast();
 }
 
-chrome.tabs.onActivated.addListener(async ({ tabId }) => {
+chrome.tabs.onActivated.addListener(({ tabId }) => enqueueSessionUpdate(async () => {
   const session = await getSession();
   if (session.sessionState !== SessionState.ACTIVE) return;
 
@@ -152,23 +159,23 @@ chrome.tabs.onActivated.addListener(async ({ tabId }) => {
   const tab = await chrome.tabs.get(tabId).catch(() => null);
   if (!tab?.url) return;
   await syncActivePageFromTab(session, tabId, tab.url, tab.title || '');
-});
+}));
 
-chrome.tabs.onHighlighted.addListener(async ({ tabIds }) => {
+chrome.tabs.onHighlighted.addListener(({ tabIds }) => enqueueSessionUpdate(async () => {
   const session = await getSession();
   if (session.sessionState !== SessionState.ACTIVE) return;
   if (!session.activeTabId || tabIds.includes(session.activeTabId)) return;
   await bounceToTrackedTab(session, 'Blocked tab switch and returned to tracked tab', tabIds[0] ?? null, false);
-});
+}));
 
-chrome.tabs.onCreated.addListener(async (tab) => {
+chrome.tabs.onCreated.addListener(tab => enqueueSessionUpdate(async () => {
   const session = await getSession();
   if (session.sessionState !== SessionState.ACTIVE) return;
   if (!tab.id || tab.id === session.activeTabId) return;
   await bounceToTrackedTab(session, 'Blocked new tab and returned to tracked tab', tab.id, true);
-});
+}));
 
-chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => enqueueNavigationSync(async () => {
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => enqueueSessionUpdate(async () => {
   if (!changeInfo.status && !changeInfo.url && !changeInfo.title) return;
   if (pendingRedirects.has(tabId)) return;
   const session = await getSession();
@@ -225,7 +232,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => enqueueNavigationS
   }
 }));
 
-chrome.webNavigation.onCommitted.addListener(async ({ tabId, url, transitionType, transitionQualifiers, frameId }) => {
+chrome.webNavigation.onCommitted.addListener(({ tabId, url, transitionType, transitionQualifiers, frameId }) => enqueueSessionUpdate(async () => {
   if (frameId !== 0) return;
   const session = await getSession();
   if (session.sessionState !== SessionState.ACTIVE) return;
@@ -270,7 +277,7 @@ chrome.webNavigation.onCommitted.addListener(async ({ tabId, url, transitionType
       await persistAndBroadcastSession(session);
     }
   }
-});
+}));
 
 async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.MessageSender): Promise<RuntimeResponse> {
   switch (message?.type) {
@@ -285,6 +292,14 @@ async function handleMessage(message: RuntimeMessage, sender: chrome.runtime.Mes
     }
     case 'START_SESSION':
       return startSession(sender);
+  }
+
+  const session = await getSession();
+  if (session.sessionState === SessionState.COMPLETED || session.sessionState === SessionState.ABORTED) {
+    return { ok: false, error: 'SESSION_FINISHED', session };
+  }
+
+  switch (message?.type) {
     case 'BEGIN_NOTE_CAPTURE':
       return beginNoteCapture(sender);
     case 'NEXT_NOTE_CAPTURE_SOURCE':
@@ -371,18 +386,18 @@ function logTrace(session: AgentSession, kind: TraceKind, detail: string): void 
 }
 
 function canSpend(session: AgentSession, cents: number): boolean {
-  return roundCents(session.spendCents + cents) <= session.budgetCents;
+  return normalizeCents(session.spendCents + cents) <= session.budgetCents;
 }
 
 function getContextTokenCostCents(nextTokens: number, originalTokens = 0): number {
   return getTokenCostCents(Math.max(0, nextTokens - originalTokens));
 }
 
-function applyContextSpend(session: AgentSession, cents = 0): void {
-  const safeCents = roundCents(Math.max(0, Number(cents) || 0));
+function applyContextSpend(session: AgentSession, cents: number, category: 'textSpendCents' | 'contextExpansionSpendCents'): void {
+  const safeCents = normalizeCents(Math.max(0, Number(cents) || 0));
   if (!safeCents) return;
-  session.spendCents = roundCents(session.spendCents + safeCents);
-  session.contextExpansionSpendCents = roundCents(session.contextExpansionSpendCents + safeCents);
+  session.spendCents = normalizeCents(session.spendCents + safeCents);
+  session[category] = normalizeCents(session[category] + safeCents);
 }
 
 function spendOperation(
@@ -393,7 +408,7 @@ function spendOperation(
 ): RuntimeResponse {
   if (!canSpend(session, cents)) return { ok: false, error: 'OUT_OF_BUDGET', session };
   session.operationsUsed += 1;
-  session.spendCents = roundCents(session.spendCents + cents);
+  session.spendCents = normalizeCents(session.spendCents + cents);
   logTrace(session, kind, detail);
   return { ok: true, session };
 }
@@ -451,9 +466,9 @@ async function startSession(sender: chrome.runtime.MessageSender): Promise<Runti
   session.activeUrl = searchUrl;
   session.activeTitle = `Google results for ${assignedTask.workOrder}`;
   session.navigationChain = [searchUrl];
-  session.lastTrackedNavigationUrl = activeTab.url || '';
-  const spent = spendOperation(session, TraceKind.SESSION_START, `Session started with work order: ${assignedTask.workOrder}`);
-  if (!spent.ok) return spent;
+  // A new run's initial search is chargeable even if the tab already has that query.
+  session.lastTrackedNavigationUrl = activeTab.url === searchUrl ? '' : activeTab.url || '';
+  logTrace(session, TraceKind.SESSION_START, `Session started with work order: ${assignedTask.workOrder}`);
   await persistSession(session);
   await queueTabNavigation(activeTab.id, searchUrl);
   return { ok: true, session };
@@ -548,10 +563,10 @@ async function commitNoteBlock(payload: { id?: string; committedText?: string; s
 
   const noteCommitCostCents = OPERATION_COST_CENTS;
   const noteContextCostCents = getContextTokenCostCents(nextTokens, originalTokens);
-  if (!canSpend(session, roundCents(noteCommitCostCents + noteContextCostCents))) {
+  if (!canSpend(session, normalizeCents(noteCommitCostCents + noteContextCostCents))) {
     return { ok: false, error: 'OUT_OF_BUDGET', session };
   }
-  applyContextSpend(session, noteContextCostCents);
+  applyContextSpend(session, noteContextCostCents, 'textSpendCents');
   const spent = spendOperation(
     session,
     TraceKind.NOTE_COMMIT,
@@ -625,8 +640,7 @@ async function enterDeliverable(): Promise<RuntimeResponse> {
   const ordered = session.rankCandidates;
   const missingCoverage = ordered.some(candidate => !hasCommittedNoteForSource(session, candidate.url));
   if (missingCoverage) return { ok: false, error: 'MISSING_NOTES_FOR_ALL_RANKED_SOURCES', session };
-  const spent = spendOperation(session, TraceKind.DRAFT_PHASE_ENTER, 'Entered deliverable phase');
-  if (!spent.ok) return spent;
+  logTrace(session, TraceKind.DRAFT_PHASE_ENTER, 'Entered deliverable phase');
   session.phase = Phase.DELIVERABLE;
   clearNoteCaptureState(session);
   await persistAndBroadcastSession(session);
@@ -643,10 +657,10 @@ async function commitDraft(payload: { committedText?: string } = {}): Promise<Ru
   if (projected > session.contextMax) return { ok: false, error: 'CONTEXT_FULL', session };
   const draftCommitCostCents = OPERATION_COST_CENTS;
   const draftContextCostCents = getContextTokenCostCents(nextTokens, originalTokens);
-  if (!canSpend(session, roundCents(draftCommitCostCents + draftContextCostCents))) {
+  if (!canSpend(session, normalizeCents(draftCommitCostCents + draftContextCostCents))) {
     return { ok: false, error: 'OUT_OF_BUDGET', session };
   }
-  applyContextSpend(session, draftContextCostCents);
+  applyContextSpend(session, draftContextCostCents, 'textSpendCents');
   const spent = spendOperation(
     session,
     TraceKind.DRAFT_COMMIT,
@@ -661,8 +675,10 @@ async function commitDraft(payload: { committedText?: string } = {}): Promise<Ru
 
 async function pauseSession(): Promise<RuntimeResponse> {
   const session = await getSession();
+  if (session.sessionState !== SessionState.ACTIVE) return { ok: false, error: 'SESSION_NOT_ACTIVE', session };
   session.sessionState = SessionState.PAUSED;
-  clearNoteCaptureState(session);
+  pendingRedirects.clear();
+  pendingTabBounceTokens.clear();
   logTrace(session, TraceKind.SESSION_PAUSE, 'Session paused');
   await persistAndBroadcastSession(session);
   return { ok: true, session };
@@ -670,9 +686,44 @@ async function pauseSession(): Promise<RuntimeResponse> {
 
 async function resumeSession(): Promise<RuntimeResponse> {
   const session = await getSession();
+  if (session.sessionState !== SessionState.PAUSED) return { ok: false, error: 'SESSION_NOT_PAUSED', session };
+
+  let captureTab: chrome.tabs.Tab | null = null;
+  let queueIndex = session.noteCaptureQueueIndex;
+  if (session.phase === Phase.NOTE_CAPTURE) {
+    // Older builds cleared the capture fields on pause but retained activeUrl.
+    queueIndex ??= getCandidateIndex(session, session.noteCaptureLockedUrl || session.activeUrl);
+    if (!session.rankCandidates[queueIndex]) {
+      return { ok: false, error: 'NOTE_CAPTURE_SOURCE_UNAVAILABLE', session };
+    }
+    const tabId = session.noteCaptureLockedTabId ?? session.activeTabId;
+    captureTab = tabId ? await chrome.tabs.get(tabId).catch(() => null) : null;
+    if (!captureTab?.id) {
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      captureTab = activeTab || null;
+    }
+    if (!captureTab?.id) return { ok: false, error: 'NO_ACTIVE_TAB', session };
+  }
+
+  if (captureTab?.id && queueIndex !== null) {
+    const source = session.rankCandidates[queueIndex]!;
+    if (normalizeTrackedUrl(captureTab.url || '') !== normalizeTrackedUrl(source.url)) {
+      if (!await queueTabNavigation(captureTab.id, source.url)) {
+        return { ok: false, error: 'NOTE_CAPTURE_TAB_UNAVAILABLE', session };
+      }
+    }
+    await focusTrackedTab(captureTab.id, captureTab.windowId, captureTab.index);
+    session.noteCaptureQueueIndex = queueIndex;
+    session.noteCaptureLockedTabId = captureTab.id;
+    session.noteCaptureLockedUrl = source.url;
+    session.activeTabId = captureTab.id;
+    session.activeUrl = source.url;
+    session.activeTitle = source.title;
+    session.lastTrackedNavigationUrl = source.url;
+    pushNavigation(session, source.url);
+  }
+  logTrace(session, TraceKind.SESSION_RESUME, 'Session resumed');
   session.sessionState = SessionState.ACTIVE;
-  const spent = spendOperation(session, TraceKind.SESSION_RESUME, 'Session resumed');
-  if (!spent.ok) return spent;
   await persistAndBroadcastSession(session);
   return { ok: true, session };
 }
@@ -680,7 +731,7 @@ async function resumeSession(): Promise<RuntimeResponse> {
 async function expandContext(): Promise<RuntimeResponse> {
   const session = await getSession();
   if (!canSpend(session, CONTEXT_EXPANSION_COST_CENTS)) return { ok: false, error: 'OUT_OF_BUDGET', session };
-  applyContextSpend(session, CONTEXT_EXPANSION_COST_CENTS);
+  applyContextSpend(session, CONTEXT_EXPANSION_COST_CENTS, 'contextExpansionSpendCents');
   logTrace(session, TraceKind.CONTEXT_EXPANSION, `Expanded context window by ${CONTEXT_EXPANSION_TOKENS} tokens`);
   session.contextMax += CONTEXT_EXPANSION_TOKENS;
   await persistAndBroadcastSession(session);
@@ -774,5 +825,5 @@ async function finalizeRankCandidates(): Promise<RuntimeResponse> {
 }
 
 function isHydratedStorage(value: unknown): boolean {
-  return typeof value === 'object' && value !== null && 'sessionRunId' in value && 'draft' in value;
+  return typeof value === 'object' && value !== null && 'sessionRunId' in value && 'draft' in value && 'textSpendCents' in value;
 }

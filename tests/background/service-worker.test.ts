@@ -158,8 +158,9 @@ describe('background service worker', () => {
 
     const restarted = await dispatchRuntimeMessage(harness, { type: 'START_SESSION' }, { tab: { id: 1 } as chrome.tabs.Tab });
     expect(restarted.session?.contextMax).toBe(DEFAULT_CONTEXT_MAX);
-    expect(restarted.session?.operationsUsed).toBe(1);
-    expect(restarted.session?.spendCents).toBe(1);
+    expect(restarted.session?.operationsUsed).toBe(0);
+    expect(restarted.session?.spendCents).toBe(0);
+    expect(restarted.session?.trace.at(-1)?.kind).toBe(TraceKind.SESSION_START);
     expect(restarted.session?.notes).toEqual([]);
     expect(restarted.session?.draft.committedText).toBe('');
     expect(getContextBreakdown(restarted.session!).notes).toBe(0);
@@ -178,8 +179,8 @@ describe('background service worker', () => {
       { id: 1, url: restarted.session?.activeUrl, title: 'Google results', active: true } as chrome.tabs.Tab
     );
     const afterFirstSearch = await dispatchRuntimeMessage(harness, { type: 'GET_SESSION' });
-    expect(afterFirstSearch.session?.operationsUsed).toBe(2);
-    expect(afterFirstSearch.session?.spendCents).toBe(2);
+    expect(afterFirstSearch.session?.operationsUsed).toBe(1);
+    expect(afterFirstSearch.session?.spendCents).toBe(10);
   });
 
   it('rejects context expansion without changing resources when the budget is too low', async () => {

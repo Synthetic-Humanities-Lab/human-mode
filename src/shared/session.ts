@@ -12,7 +12,7 @@ import {
 } from './types';
 import { makeId } from './ids';
 import { getPageLabel, normalizeTrackedUrl } from './urls';
-import { getBudgetRemainingCents, getContextBreakdown, getOperationsMax, moneyFromCents } from './budget';
+import { getBudgetRemainingCents, getContextBreakdown, getOperationsMax, moneyFromCents, normalizeCents } from './budget';
 
 export function createEmptySession(): AgentSession {
   return {
@@ -28,6 +28,7 @@ export function createEmptySession(): AgentSession {
     spendCents: 0,
     operationsUsed: 0,
     contextMax: DEFAULT_CONTEXT_MAX,
+    textSpendCents: 0,
     contextExpansionSpendCents: 0,
     activeTabId: null,
     activeUrl: '',
@@ -71,6 +72,7 @@ export function hydrateSession(input: unknown): AgentSession {
   session.spendCents = nonNegativeNumberFrom(source.spendCents);
   session.operationsUsed = nonNegativeNumberFrom(source.operationsUsed);
   session.contextMax = positiveNumberFrom(source.contextMax, DEFAULT_CONTEXT_MAX);
+  session.textSpendCents = nonNegativeNumberFrom(source.textSpendCents);
   session.contextExpansionSpendCents = nonNegativeNumberFrom(source.contextExpansionSpendCents);
   session.activeTabId = nullableIntegerFrom(source.activeTabId);
   session.activeUrl = stringFrom(source.activeUrl);
@@ -88,6 +90,15 @@ export function hydrateSession(input: unknown): AgentSession {
   session.notes = notesFrom(source.notes);
   session.draft = draftFrom(source.draft);
   session.trace = Array.isArray(source.trace) ? source.trace.filter(isTraceEntryLike) : [];
+
+  if (source.textSpendCents === undefined) {
+    // Legacy records combined text and capacity. Recover the split at the historical
+    // $1 expansion price, preserving actual spending rather than repricing the run.
+    const combinedSpend = session.contextExpansionSpendCents;
+    const expansionCount = session.trace.filter(entry => entry.kind === TraceKind.CONTEXT_EXPANSION).length;
+    session.contextExpansionSpendCents = Math.min(combinedSpend, expansionCount * 100);
+    session.textSpendCents = normalizeCents(combinedSpend - session.contextExpansionSpendCents);
+  }
 
   if (
     session.noteCaptureQueueIndex !== null
@@ -123,6 +134,7 @@ export function makeSessionExport(session: AgentSession, outcome: SessionState):
       operationsMax: getOperationsMax(session),
       budgetRemainingCents: getBudgetRemainingCents(session),
       estimatedSpend: moneyFromCents(session.spendCents),
+      textSpendCents: session.textSpendCents,
       contextExpansionSpendCents: session.contextExpansionSpendCents,
       notesCommitted: session.trace.filter(item => item.kind === TraceKind.NOTE_COMMIT).length,
       pagesOpened: session.trace.filter(item => item.kind === TraceKind.OPEN_PAGE).length,

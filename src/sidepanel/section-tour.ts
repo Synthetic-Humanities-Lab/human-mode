@@ -1,4 +1,4 @@
-import { escapeHtml } from '../shared';
+import { DEFAULT_BUDGET_CENTS, escapeHtml, formatMoney, OPERATION_COST_CENTS } from '../shared';
 import { tutorialSources, tutorialTask } from './copy';
 
 const steps = [
@@ -85,12 +85,13 @@ export function initSectionTour(beforeOpen: () => void, afterClose: () => void):
     text('workOrderDisplay', tutorialTask.workOrder);
     text('stateValue', 'Active');
     text('phaseValue', 'Collect');
-    text('budgetRemaining', '$9.98');
-    text('budgetMeta', 'Actions $0.02 · Text and capacity $0.00');
+    const exampleSpendCents = OPERATION_COST_CENTS; // The initial search; starting is free.
+    text('budgetRemaining', formatMoney(Math.round(DEFAULT_BUDGET_CENTS - exampleSpendCents)));
+    text('budgetMeta', `Spent · Actions ${formatMoney(exampleSpendCents)} · Text ${formatMoney(0)} · Capacity ${formatMoney(0)}`);
     text('contextUsed', '27');
     text('contextMeta', 'Assigned task 27 | Notes 0 | Draft 0');
     text('contextMax', '500');
-    for (const [id, width] of [['contextFill', '5.4%'], ['budgetFill', '0.2%']]) {
+    for (const [id, width] of [['contextFill', '5.4%'], ['budgetFill', `${exampleSpendCents / DEFAULT_BUDGET_CENTS * 100}%`]]) {
       const fill = document.getElementById(id!)!;
       const oldWidth = fill.style.width;
       restore.push(() => { fill.style.width = oldWidth; });

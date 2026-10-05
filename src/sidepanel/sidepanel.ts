@@ -19,6 +19,7 @@ import {
   hasCommittedNoteForSource,
   isCandidatePage,
   makeId,
+  makeSessionExport,
   NoteBlock,
   normalizeTrackedUrl,
   roughTokenCount
@@ -38,6 +39,8 @@ let session: AgentSession | null = null;
 let deferredSession: AgentSession | null = null;
 let noteUiState = new Map<string, NoteUiState>();
 let exportPayload: SessionExport | null = null;
+let saving = false;
+let endingSession = false;
 let contextExceeded = false;
 let lastSessionRunId = '';
 const retiredSessionRunIds = new Set<string>();
@@ -189,21 +192,13 @@ function bindEvents(): void {
     const paused = session?.sessionState === SessionState.PAUSED;
     handleResponse(await sendMessage({ type: paused ? 'RESUME_SESSION' : 'PAUSE_SESSION' }));
   });
-  els.abortSessionBtn.addEventListener('click', async () => {
-    const response = await sendMessage({ type: 'ABORT_SESSION' });
-    handleResponse(response);
-    if (response?.export) showExport(response.export);
-  });
+  els.abortSessionBtn.addEventListener('click', () => finishSession('ABORT_SESSION'));
   els.expandContextBtn.addEventListener('click', async () => {
     const response = await sendMessage({ type: 'EXPAND_CONTEXT' });
     handleResponse(response);
     if (response?.ok) showSideToast(`Context expanded by ${CONTEXT_EXPANSION_TOKENS} tokens.`, 'success');
   });
-  els.endSessionBtn.addEventListener('click', async () => {
-    const response = await sendMessage({ type: 'COMPLETE_SESSION' });
-    handleResponse(response);
-    if (response?.export) showExport(response.export);
-  });
+  els.endSessionBtn.addEventListener('click', () => finishSession('COMPLETE_SESSION'));
   els.addRankCandidateBtn.addEventListener('click', addCurrentPageCandidate);
   els.finalizeRankCandidatesBtn.addEventListener('click', async () => handleResponse(await sendMessage({ type: 'FINALIZE_RANK_CANDIDATES' })));
   els.newNoteBtn.addEventListener('click', () => {
@@ -218,11 +213,10 @@ function bindEvents(): void {
   });
   els.nextRankedPageBtn.addEventListener('click', async () => handleResponse(await sendMessage({ type: 'NEXT_NOTE_CAPTURE_SOURCE' })));
   els.enterDeliverableBtn.addEventListener('click', async () => handleResponse(await sendMessage({ type: 'ENTER_DELIVERABLE' })));
-  els.commitDraftBtn.addEventListener('click', async () => {
-    const response = await sendMessage({ type: 'COMMIT_DRAFT', payload: { committedText: els.draftInput.value } });
-    if (response?.ok && response?.session) showSideToast('Draft saved. End the session to export your deliverable.', 'success');
-    handleResponse(response);
-  });
+  els.commitDraftBtn.addEventListener('click', () => saveMessage(
+    { type: 'COMMIT_DRAFT', payload: { committedText: els.draftInput.value } },
+    () => showSideToast('Draft saved. End the session to export your deliverable.', 'success')
+  ));
   els.draftInput.addEventListener('input', updateLimitWarning);
   els.downloadDeliverableBtn.addEventListener('click', () => {
     if (!exportPayload?.deliverable) return;
@@ -232,6 +226,32 @@ function bindEvents(): void {
     if (!exportPayload) return;
     downloadSessionExportFile(exportPayload);
   });
+}
+
+async function saveMessage(message: RuntimeMessage, onSaved: () => void): Promise<void> {
+  if (saving || endingSession) return;
+  saving = true;
+  renderButtons();
+  try {
+    const response = await sendMessage(message);
+    if (response?.ok) onSaved();
+    handleResponse(response);
+  } finally {
+    saving = false;
+    renderButtons();
+  }
+}
+
+async function finishSession(type: 'ABORT_SESSION' | 'COMPLETE_SESSION'): Promise<void> {
+  if (saving || endingSession) return;
+  endingSession = true;
+  renderButtons();
+  try {
+    handleResponse(await sendMessage({ type }));
+  } finally {
+    endingSession = false;
+    renderButtons();
+  }
 }
 
 function handleResponse(response: RuntimeResponse | null): void {
@@ -270,8 +290,7 @@ function render(): void {
   if (!session) return;
   els.appRoot.dataset.sessionState = session.sessionState || '';
 
-  const spendOpsCents = Math.max(0, session.spendCents - session.contextExpansionSpendCents);
-  const spendContextCents = session.contextExpansionSpendCents;
+  const spendOpsCents = Math.max(0, session.spendCents - session.textSpendCents - session.contextExpansionSpendCents);
   const budgetRatio = session.budgetCents ? session.spendCents / session.budgetCents : 0;
 
   els.modeBadge.textContent = session.sessionState === SessionState.ACTIVE ? 'ON' : session.sessionState.toUpperCase();
@@ -279,10 +298,12 @@ function render(): void {
   els.phaseValue.textContent = ({ start: 'Request', framing: 'Request', retrieval: 'Collect', inspection: 'Rank', note_capture: 'Notes', deliverable: 'Deliver' })[session.phase];
   els.contextMax.textContent = String(session.contextMax);
   applyProjectedContextUi();
-  els.budgetRemaining.textContent = formatMoney(getBudgetRemainingCents(session));
+  els.budgetRemaining.textContent = formatMoney(Math.round(getBudgetRemainingCents(session)));
   els.budgetMeta.textContent = [
+    'Spent',
     `Actions ${formatMoney(spendOpsCents)}`,
-    `Text and capacity ${formatMoney(spendContextCents)}`
+    `Text ${formatMoney(session.textSpendCents)}`,
+    `Capacity ${formatMoney(session.contextExpansionSpendCents)}`
   ].join(' · ');
   els.requesterQuestionDisplay.textContent = session.requesterQuestion || 'No requester question assigned yet.';
   els.requesterQuestionDisplay.classList.toggle('muted', !session.requesterQuestion);
@@ -290,6 +311,7 @@ function render(): void {
   els.workOrderDisplay.classList.toggle('muted', !session.workOrder);
 
   setBar(els.budgetFill, budgetRatio, 0.85);
+  renderExport();
   renderButtons();
   renderRankCandidates();
   renderRankedPages();
@@ -323,21 +345,28 @@ function renderButtons(): void {
   const currentPageCandidate = isCandidatePage(session.activeUrl);
   const currentPageAdded = hasRankCandidate(session.activeUrl);
   const finished = session.sessionState === SessionState.COMPLETED || session.sessionState === SessionState.ABORTED;
+  const busy = saving || endingSession;
 
-  els.startSessionBtn.disabled = !(session.sessionState === SessionState.OFF || session.sessionState === SessionState.COMPLETED || session.sessionState === SessionState.ABORTED);
+  els.startSessionBtn.disabled = busy || !(session.sessionState === SessionState.OFF || finished);
   els.startSessionBtn.innerHTML = finished ? 'New Session' : 'Start Session <span aria-hidden="true">↗</span>';
-  els.pauseResumeSessionBtn.disabled = !(active || paused);
+  els.pauseResumeSessionBtn.disabled = busy || !(active || paused);
   els.pauseResumeSessionBtn.textContent = paused ? 'Resume' : 'Pause';
-  els.abortSessionBtn.disabled = !(active || paused);
+  els.abortSessionBtn.disabled = busy || !(active || paused);
   els.expandContextBtn.disabled = !active;
-  els.endSessionBtn.disabled = !(active && inDeliverable);
+  els.endSessionBtn.disabled = busy || !(active && inDeliverable);
   els.addRankCandidateBtn.disabled = !(canManageCandidates && !session.candidateSetFinalized && currentPageCandidate && !currentPageAdded);
   els.finalizeRankCandidatesBtn.disabled = !(canManageCandidates && !session.candidateSetFinalized && hasCandidates);
   els.newNoteBtn.disabled = !(active && inCapture);
   els.nextRankedPageBtn.disabled = !canAdvanceNoteCapture();
   els.enterDeliverableBtn.disabled = !(active && inCapture && allSourcesCovered);
-  els.commitDraftBtn.disabled = !(active && inDeliverable);
-  els.draftInput.disabled = !(active && inDeliverable);
+  els.commitDraftBtn.disabled = busy || !(active && inDeliverable);
+  els.draftInput.disabled = busy || !(active && inDeliverable);
+  els.notesList.querySelectorAll<HTMLButtonElement>('.commit-note-btn').forEach(button => {
+    button.disabled = busy || !active;
+  });
+  els.notesList.querySelectorAll<HTMLTextAreaElement>('.note-text').forEach(textarea => {
+    textarea.disabled = busy || !active;
+  });
   els.downloadDeliverableBtn.disabled = !exportPayload?.deliverable;
   els.downloadJsonBtn.disabled = !exportPayload;
   els.addRankCandidateBtn.textContent = currentPageAdded ? 'Added Candidate' : 'Add Candidate';
@@ -368,11 +397,12 @@ function renderLayout(): void {
   els.traceSection.classList.toggle('hidden', state === SessionState.OFF);
 
   const stages = ['start', 'retrieval', 'inspection', 'note_capture', 'deliverable'];
-  const current = Math.max(0, stages.indexOf(session.phase === Phase.FRAMING ? 'start' : session.phase));
+  const workflowPhase = live ? session.phase : Phase.START;
+  const current = Math.max(0, stages.indexOf(workflowPhase === Phase.FRAMING ? 'start' : workflowPhase));
   document.querySelectorAll<HTMLElement>('.workflow li').forEach((step, index) => {
-    step.classList.toggle('current', !finished && index === current);
-    step.classList.toggle('complete', finished || index < current);
-    if (!finished && index === current) step.setAttribute('aria-current', 'step');
+    step.classList.toggle('current', index === current);
+    step.classList.toggle('complete', index < current);
+    if (index === current) step.setAttribute('aria-current', 'step');
     else step.removeAttribute('aria-current');
   });
 }
@@ -612,30 +642,27 @@ function renderNotes(): void {
     meta.textContent = `${item.sourceTitle || 'Current page'} | ${noteWords} words | ${noteWords} tokens`;
     readonly.textContent = note?.committedText || '';
     textarea.value = draft?.draftText ?? '';
-    const editing = !!draft;
+    const active = session.sessionState === SessionState.ACTIVE;
+    const editing = !!draft && active;
     node.classList.toggle('editing', editing);
     readonly.classList.toggle('hidden', editing);
-    const allowPruneActions = !!note && (contextExceeded || session.phase === Phase.DELIVERABLE);
+    const allowPruneActions = active && !!note && (contextExceeded || session.phase === Phase.DELIVERABLE);
     readonlyActions.classList.toggle('hidden', editing || !allowPruneActions);
     textarea.classList.toggle('hidden', !editing);
     editingActions.classList.toggle('hidden', !editing);
     if (deleteBtn) deleteBtn.classList.toggle('hidden', !note);
+    commitBtn.disabled = saving || endingSession || !active;
+    textarea.disabled = saving || endingSession || !active;
 
-    commitBtn.addEventListener('click', async () => {
-      const response = await sendMessage({
-        type: 'COMMIT_NOTE_BLOCK',
-        payload: {
-          id: item.id,
-          committedText: textarea.value,
-          sourceUrl: item.sourceUrl || session?.noteCaptureLockedUrl || session?.activeUrl || '',
-          sourceTitle: item.sourceTitle || session?.activeTitle || ''
-        }
-      });
-      if (response?.ok) {
-        noteUiState.delete(item.id);
+    commitBtn.addEventListener('click', () => saveMessage({
+      type: 'COMMIT_NOTE_BLOCK',
+      payload: {
+        id: item.id,
+        committedText: textarea.value,
+        sourceUrl: item.sourceUrl || session?.noteCaptureLockedUrl || session?.activeUrl || '',
+        sourceTitle: item.sourceTitle || session?.activeTitle || ''
       }
-      handleResponse(response);
-    });
+    }, () => { noteUiState.delete(item.id); }));
     reviseBtn.addEventListener('click', async () => {
       noteUiState.set(item.id, {
         id: item.id,
@@ -721,11 +748,13 @@ function renderTrace(): void {
   `).join('');
 }
 
-function showExport(exportData: SessionExport): void {
-  exportPayload = exportData;
-  els.exportSection.classList.remove('hidden');
-  els.exportSummary.innerHTML = renderExportSummary(exportData);
-  renderButtons();
+function renderExport(): void {
+  const state = session?.sessionState;
+  exportPayload = session && (state === SessionState.COMPLETED || state === SessionState.ABORTED)
+    ? makeSessionExport(session, state)
+    : null;
+  els.exportSection.classList.toggle('hidden', !exportPayload);
+  els.exportSummary.innerHTML = exportPayload ? renderExportSummary(exportPayload) : '';
 }
 
 async function sendMessage(message: RuntimeMessage): Promise<RuntimeResponse | null> {

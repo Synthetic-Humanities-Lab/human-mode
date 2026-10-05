@@ -1,7 +1,6 @@
 import {
   AgentSession,
   ContextBreakdown,
-  CONTEXT_EXPANSION_TOKENS,
   OPERATION_COST_CENTS,
   TOKEN_COST_CENTS_PER_TOKEN
 } from './types';
@@ -34,26 +33,26 @@ export function getContextBreakdown(session: AgentSession): ContextBreakdown {
 }
 
 export function moneyFromCents(cents: number): number {
-  return Number((cents / 100).toFixed(2));
+  return Number((normalizeCents(cents) / 100).toFixed(3));
 }
 
 export function formatMoney(cents: number): string {
-  return `$${(cents / 100).toFixed(2)}`;
+  const normalized = normalizeCents(cents);
+  return `$${(normalized / 100).toFixed(Number.isInteger(normalized) ? 2 : 3)}`;
 }
 
-export function roundCents(cents: number): number {
-  return Math.round(Number(cents || 0));
+// Stored amounts remain in cents, with one decimal place for $0.001 charges.
+export function normalizeCents(cents: number): number {
+  return Math.round(cents * 10) / 10;
 }
 
 export function getTokenCostCents(tokens = 0): number {
   const safeTokens = Math.max(0, Number(tokens) || 0);
-  return roundCents(safeTokens * TOKEN_COST_CENTS_PER_TOKEN);
+  return normalizeCents(safeTokens * TOKEN_COST_CENTS_PER_TOKEN);
 }
 
-export const CONTEXT_EXPANSION_COST_CENTS = getTokenCostCents(CONTEXT_EXPANSION_TOKENS);
-
 export function getBudgetRemainingCents(session: AgentSession): number {
-  return roundCents(Math.max(0, session.budgetCents - session.spendCents));
+  return normalizeCents(Math.max(0, session.budgetCents - session.spendCents));
 }
 
 export function getOperationsMax(session: AgentSession): number {
