@@ -4,6 +4,10 @@ A Chrome extension for learning how research agents work by collecting sources, 
 
 ## Install
 
+[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/human-mode/hghiblpholclalmdhdddladigkcjimco)
+
+For a local development build:
+
 Requires Chrome 120 or later, Node.js, and npm.
 
 ```bash
@@ -46,6 +50,10 @@ The built-in requests are in [src/shared/task-bank.json](src/shared/task-bank.js
 ## Privacy
 
 Session data and settings are stored locally. The extension has no analytics or developer-operated server. Starting a session sends the initial search query to Google through normal browser navigation.
+
+## Landing page
+
+The static site is in `docs/`. Preview locally with `python -m http.server 4175 --directory docs` and open http://localhost:4175. It can be deployed through GitHub Pages without a build step.
 
 ## License
 
